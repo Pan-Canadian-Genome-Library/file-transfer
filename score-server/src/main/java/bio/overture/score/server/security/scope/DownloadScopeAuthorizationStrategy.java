@@ -17,10 +17,10 @@
  */
 package bio.overture.score.server.security.scope;
 
+import bio.overture.score.server.auth.AuthZAuthorizationService;
 import bio.overture.score.server.exception.NotRetryableException;
 import bio.overture.score.server.metadata.MetadataService;
 import bio.overture.score.server.security.Access;
-import java.util.Set;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -29,40 +29,55 @@ import org.springframework.security.core.Authentication;
 @Slf4j
 public class DownloadScopeAuthorizationStrategy extends AbstractScopeAuthorizationStrategy {
 
+  private final AuthZAuthorizationService authZAuthorizationService;
+
   public DownloadScopeAuthorizationStrategy(
       @NonNull String studyPrefix,
       @NonNull String studySuffix,
       @NonNull String systemScope,
       MetadataService metadataService,
-      @NonNull String provider) {
+      @NonNull String provider,
+      @NonNull AuthZAuthorizationService authZAuthorizationService) {
     super(studyPrefix, studySuffix, systemScope, metadataService, provider);
+    this.authZAuthorizationService = authZAuthorizationService;
   }
 
   @Override
-  public boolean authorize(@NonNull Authentication authentication, @NonNull final String objectId) {
+  public boolean authorize(@NonNull Authentication authentication, @NonNull String objectId) {
 
-    Set<String> grantedScopes = getGrantedScopes(authentication);
+    log.info("Checking authorization for objectId {}", objectId);
 
-    log.info("Checking system-level authorization for objectId {}", objectId);
-    if (verifyOneOfSystemScope(grantedScopes)) {
-      return true;
-    }
-    log.info("Checking access control level for objectId {}", objectId);
     val fileAccessType = fetchFileAccessType(objectId);
     val accessType = new Access(fileAccessType);
+
     if (accessType.isOpen()) {
-      log.info("Access control level is open -- access granted");
+      log.info("File access is OPEN - granting access");
       return true;
-    } else if (accessType.isControlled()) {
-      log.info("Access control level is controlled -- checking study level authorization.");
-      return verifyOneOfStudyScope(grantedScopes, objectId);
-    } else {
-      val msg =
-          String.format(
-              "Invalid access type '%s' found in Metadata record for object id: %s",
-              fileAccessType, objectId);
-      log.error(msg);
-      throw new NotRetryableException(new IllegalArgumentException(msg));
     }
+
+    if (accessType.isControlled()) {
+      log.info("File access is CONTROLLED - checking user permissions");
+
+      String studyId = fetchStudyId(objectId);
+
+      boolean isAdmin = authZAuthorizationService.isAdmin(authentication);
+      boolean canWrite = authZAuthorizationService.canEditStudy(authentication, studyId);
+
+      if (isAdmin || canWrite) {
+        log.info("User has permission (admin or write access) for study {}", studyId);
+        return true;
+      } else {
+        log.warn("User does NOT have permission for study {}", studyId);
+        return false;
+      }
+    }
+
+    // Step 4: Unexpected access type
+    String msg =
+        String.format(
+            "Invalid access type '%s' found in Metadata record for object id: %s",
+            fileAccessType, objectId);
+    log.error(msg);
+    throw new NotRetryableException(new IllegalArgumentException(msg));
   }
 }

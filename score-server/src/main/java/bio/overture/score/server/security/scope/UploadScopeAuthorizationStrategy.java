@@ -16,8 +16,8 @@
  */
 package bio.overture.score.server.security.scope;
 
+import bio.overture.score.server.auth.AuthZAuthorizationService;
 import bio.overture.score.server.metadata.MetadataService;
-import java.util.Set;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -25,24 +25,45 @@ import org.springframework.security.core.Authentication;
 @Slf4j
 public class UploadScopeAuthorizationStrategy extends AbstractScopeAuthorizationStrategy {
 
+  private final AuthZAuthorizationService authZAuthorizationService;
+
   public UploadScopeAuthorizationStrategy(
       @NonNull String studyPrefix,
       @NonNull String studySuffix,
       @NonNull String systemScope,
       @NonNull MetadataService metadataService,
-      @NonNull String provider) {
+      @NonNull String provider,
+      @NonNull AuthZAuthorizationService authZAuthorizationService) {
     super(studyPrefix, studySuffix, systemScope, metadataService, provider);
+    this.authZAuthorizationService = authZAuthorizationService;
   }
 
   public boolean authorize(@NonNull Authentication authentication, @NonNull final String objectId) {
+    log.info("Checking upload authorization for objectId {}", objectId);
 
-    Set<String> grantedScopes = getGrantedScopes(authentication);
+    String studyId = fetchStudyId(objectId);
 
-    if (verifyOneOfSystemScope(grantedScopes)) {
-      log.info("System-level upload authorization granted");
-      return true;
+    if (studyId == null) {
+      log.warn("No study found for objectId {}", objectId);
+      return false;
     }
-    log.info("Checking study-level authorization for objectId {}", objectId);
-    return verifyOneOfStudyScope(grantedScopes, objectId);
+
+    boolean isAuthorized =
+        authZAuthorizationService.isAdmin(authentication)
+            || authZAuthorizationService.canEditStudy(authentication, studyId);
+
+    if (isAuthorized) {
+      log.info(
+          "Authorization granted for user {} to upload to study {}",
+          authentication.getName(),
+          studyId);
+    } else {
+      log.info(
+          "Authorization denied for user {} to upload to study {}",
+          authentication.getName(),
+          studyId);
+    }
+
+    return isAuthorized;
   }
 }

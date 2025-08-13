@@ -24,6 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 
+import bio.overture.score.server.auth.AuthZAuthorizationService;
 import bio.overture.score.server.config.SecurityConfig;
 import bio.overture.score.server.exception.NotRetryableException;
 import bio.overture.score.server.metadata.MetadataEntity;
@@ -86,6 +87,7 @@ public class DownloadScopeAuthorizationStrategyTest {
   @MockBean private MetadataService metadataService;
   @MockBean private DownloadService downloadService;
   @MockBean private UploadService uploadService;
+  @MockBean private static AuthZAuthorizationService authZAuthorizationService;
 
   @Before
   @SneakyThrows
@@ -114,7 +116,12 @@ public class DownloadScopeAuthorizationStrategyTest {
 
   public DownloadScopeAuthorizationStrategy init() {
     return new DownloadScopeAuthorizationStrategy(
-        STUDY_PREFIX, DOWNLOAD_SUFFIX, SYSTEM_SCOPE, getMetadataService(), PROVIDER_EGO);
+        STUDY_PREFIX,
+        DOWNLOAD_SUFFIX,
+        SYSTEM_SCOPE,
+        getMetadataService(),
+        PROVIDER_EGO,
+        authZAuthorizationService);
   }
 
   public MetadataEntity entity(

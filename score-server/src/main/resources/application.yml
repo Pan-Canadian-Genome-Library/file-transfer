@@ -243,6 +243,10 @@ auth:
         study:
           prefix: PROGRAMDATA-
           suffix: .WRITE
+authz:
+  host:
+  admin:
+    group:
 
 ---
 ###############################################################################

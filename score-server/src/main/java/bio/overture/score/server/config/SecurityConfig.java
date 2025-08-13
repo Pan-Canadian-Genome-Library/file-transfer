@@ -17,6 +17,8 @@
  */
 package bio.overture.score.server.config;
 
+import bio.overture.score.server.auth.AuthZAuthorizationService;
+import bio.overture.score.server.auth.AuthzTokenIntrospector;
 import bio.overture.score.server.metadata.MetadataService;
 import bio.overture.score.server.properties.ScopeProperties;
 import bio.overture.score.server.security.ApiKeyIntrospector;
@@ -38,11 +40,11 @@ import org.springframework.security.authentication.AuthenticationManagerResolver
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationProvider;
 import org.springframework.security.oauth2.server.resource.authentication.OpaqueTokenAuthenticationProvider;
 import org.springframework.security.oauth2.server.resource.introspection.OpaqueTokenIntrospector;
+import org.springframework.security.web.SecurityFilterChain;
 
 /**
  * Resource service configuration file.<br>
@@ -55,7 +57,7 @@ import org.springframework.security.oauth2.server.resource.introspection.OpaqueT
 @Getter
 @Setter
 @ConfigurationProperties("auth.server")
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
+public class SecurityConfig {
 
   private String url;
   private String clientId;
@@ -67,76 +69,41 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
   @Autowired private JwtDecoder jwtDecoder;
 
+  @Autowired private AuthzTokenIntrospector authzTokenIntrospector;
+
+  @Autowired private SwaggerConfig swaggerConfig;
+
   @Autowired
   public SecurityConfig(@NonNull ScopeProperties scopeProperties) {
     this.scopeProperties = scopeProperties;
   }
 
-  @Override
-  public void configure(@NonNull HttpSecurity http) throws Exception {
-    http.csrf().disable();
-    configureAuthorization(http);
-  }
-
-  private void configureAuthorization(HttpSecurity http) throws Exception {
-    scopeProperties.logScopeProperties();
-
-    // @formatter:off
-    http.authorizeRequests()
-        .antMatchers("/health")
-        .permitAll()
-        .antMatchers("/actuator/health")
-        .permitAll()
-        .antMatchers("/upload/**")
-        .permitAll()
-        .antMatchers("/download/**")
-        .permitAll()
-        .antMatchers("/swagger**", "/swagger-resources/**", "/v2/api**", "/webjars/**")
-        .permitAll()
-        .and()
-        .authorizeRequests()
-        .anyRequest()
-        .authenticated();
-
-    http.oauth2ResourceServer(
-        oauth2 -> oauth2.authenticationManagerResolver(this.tokenAuthenticationManagerResolver()));
-    // @formatter:on
-    log.info("initialization done");
-  }
-
   @Bean
-  public AuthenticationManagerResolver<HttpServletRequest> tokenAuthenticationManagerResolver() {
+  public UploadScopeAuthorizationStrategy projectSecurity(
+      @Autowired MetadataService metadataService,
+      @Autowired AuthZAuthorizationService authZAuthorizationService) {
 
-    // Auth Managers for JWT and for ApiKeys. JWT uses the default auth provider,
-    // but OpaqueTokens are handled by the custom ApiKeyIntrospector
-    AuthenticationManager jwt = new ProviderManager(new JwtAuthenticationProvider(jwtDecoder));
-    AuthenticationManager opaqueToken =
-        new ProviderManager(
-            new OpaqueTokenAuthenticationProvider(
-                new ApiKeyIntrospector(url, clientId, clientSecret, tokenName)));
-
-    return (request) -> useJwt(request) ? jwt : opaqueToken;
-  }
-
-  @Bean
-  public UploadScopeAuthorizationStrategy projectSecurity(@Autowired MetadataService song) {
     return new UploadScopeAuthorizationStrategy(
         scopeProperties.getUpload().getStudy().getPrefix(),
         scopeProperties.getUpload().getStudy().getSuffix(),
         scopeProperties.getUpload().getSystem(),
-        song,
-        provider);
+        metadataService,
+        provider,
+        authZAuthorizationService);
   }
 
   @Bean
   @Scope("prototype")
-  public DownloadScopeAuthorizationStrategy accessSecurity(@Autowired MetadataService song) {
+  public DownloadScopeAuthorizationStrategy accessSecurity(
+      @Autowired MetadataService song,
+      @Autowired AuthZAuthorizationService authZAuthorizationService) {
     return new DownloadScopeAuthorizationStrategy(
         scopeProperties.getDownload().getStudy().getPrefix(),
         scopeProperties.getDownload().getStudy().getSuffix(),
         scopeProperties.getDownload().getSystem(),
         song,
-        provider);
+        provider,
+        authZAuthorizationService);
   }
 
   public ScopeProperties getScopeProperties() {
@@ -162,5 +129,78 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
       }
     }
     return true;
+  }
+
+  @Bean
+  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http.authorizeHttpRequests(
+            authorize ->
+                authorize
+                    .antMatchers("/isAlive")
+                    .permitAll()
+                    .antMatchers("/studies/**")
+                    .permitAll()
+                    .antMatchers("/upload/**")
+                    .permitAll()
+                    .antMatchers("/entities/**")
+                    .permitAll()
+                    .antMatchers("/export/**")
+                    .permitAll()
+                    .antMatchers("/schemas/**")
+                    .permitAll()
+                    .antMatchers(swaggerConfig.getAlternateSwaggerUrl())
+                    .permitAll()
+                    .antMatchers(
+                        "/swagger**",
+                        "/swagger-ui.html",
+                        "/swagger-ui**",
+                        "/swagger-resources/**",
+                        "/v2/api-docs/**",
+                        "/webjars/**")
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated())
+        .oauth2ResourceServer(
+            oauth2 -> oauth2.authenticationManagerResolver(tokenAuthenticationManagerResolver()));
+
+    return http.build();
+  }
+
+  @Bean
+  public AuthenticationManagerResolver<HttpServletRequest> tokenAuthenticationManagerResolver() {
+    AuthenticationManager jwtManager =
+        new ProviderManager(new JwtAuthenticationProvider(jwtDecoder));
+
+    AuthenticationManager authzOpaqueManager =
+        new ProviderManager(new OpaqueTokenAuthenticationProvider(authzTokenIntrospector));
+
+    return (request) -> {
+      if (isAuthZRequest(request)) {
+        return authzOpaqueManager;
+      } else {
+        return jwtManager;
+      }
+    };
+  }
+
+  private boolean isAuthZRequest(HttpServletRequest request) {
+    // Option 1: Check for custom header
+    String providerHeader = request.getHeader("X-Auth-Provider");
+    if (providerHeader != null && providerHeader.equalsIgnoreCase("authz")) {
+      return true;
+    }
+
+    // Option 2: Detect based on token format
+    String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+    if (authHeader != null && authHeader.startsWith("Bearer ")) {
+      String token = authHeader.substring(7);
+      return !isJwtToken(token); // Not a JWT => probably opaque AuthZ token
+    }
+
+    return false;
+  }
+
+  private boolean isJwtToken(String token) {
+    return token.split("\\.").length == 3;
   }
 }
