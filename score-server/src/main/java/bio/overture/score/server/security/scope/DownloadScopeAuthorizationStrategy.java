@@ -20,26 +20,35 @@ package bio.overture.score.server.security.scope;
 import bio.overture.score.server.auth.AuthZAuthorizationService;
 import bio.overture.score.server.exception.NotRetryableException;
 import bio.overture.score.server.metadata.MetadataService;
+import bio.overture.score.server.repository.auth.KeycloakAuthorizationService;
 import bio.overture.score.server.security.Access;
+import bio.overture.score.server.util.Scopes;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthentication;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+
+import static bio.overture.score.server.util.Scopes.extractGrantedScopesFromRpt;
 
 @Slf4j
 public class DownloadScopeAuthorizationStrategy extends AbstractScopeAuthorizationStrategy {
 
-  private final AuthZAuthorizationService authZAuthorizationService;
+  @Autowired
+  private AuthZAuthorizationService authZAuthorizationService;
+
+  @Autowired private KeycloakAuthorizationService keycloakAuthorizationService;
 
   public DownloadScopeAuthorizationStrategy(
       @NonNull String studyPrefix,
       @NonNull String studySuffix,
       @NonNull String systemScope,
       MetadataService metadataService,
-      @NonNull String provider,
-      @NonNull AuthZAuthorizationService authZAuthorizationService) {
+      @NonNull String provider) {
     super(studyPrefix, studySuffix, systemScope, metadataService, provider);
-    this.authZAuthorizationService = authZAuthorizationService;
+    //this.authZAuthorizationService = authZAuthorizationService;
   }
 
   @Override
@@ -60,16 +69,21 @@ public class DownloadScopeAuthorizationStrategy extends AbstractScopeAuthorizati
 
       String studyId = fetchStudyId(objectId);
 
-      boolean isAdmin = authZAuthorizationService.isAdmin(authentication);
-      boolean canWrite = authZAuthorizationService.canEditStudy(authentication, studyId);
-
-      if (isAdmin || canWrite) {
-        log.info("User has permission (admin or write access) for study {}", studyId);
-        return true;
+      if ("pcglauthz".equalsIgnoreCase(this.getProvider()) && authentication instanceof BearerTokenAuthentication) {
+        return authZAuthorizationService.isAdmin(authentication) ||
+                authZAuthorizationService.canEditStudy(authentication, studyId);
+      } else if ("keycloak".equalsIgnoreCase(this.getProvider())
+              && authentication instanceof JwtAuthenticationToken) {
+        val authGrants =
+                keycloakAuthorizationService.fetchAuthorizationGrants(
+                        ((JwtAuthenticationToken) authentication).getToken().getTokenValue());
+        return verifyOneOfSystemScope(extractGrantedScopesFromRpt(authGrants));
       } else {
-        log.warn("User does NOT have permission for study {}", studyId);
-        return false;
+        // Default to EGO provider
+        // extract scopes from authentication object
+        return verifyOneOfSystemScope(Scopes.extractGrantedScopes(authentication));
       }
+
     }
 
     // Step 4: Unexpected access type

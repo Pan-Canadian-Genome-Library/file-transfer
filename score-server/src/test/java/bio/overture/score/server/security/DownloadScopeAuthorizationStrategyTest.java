@@ -47,6 +47,9 @@ import lombok.val;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -56,8 +59,10 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.util.ReflectionUtils;
 import org.springframework.web.context.WebApplicationContext;
 
 @SpringBootTest
@@ -87,7 +92,11 @@ public class DownloadScopeAuthorizationStrategyTest {
   @MockBean private MetadataService metadataService;
   @MockBean private DownloadService downloadService;
   @MockBean private UploadService uploadService;
-  @MockBean private static AuthZAuthorizationService authZAuthorizationService;
+  @Mock private AuthZAuthorizationService authZAuthorizationService;
+
+  //@InjectMocks private DownloadScopeAuthorizationStrategy downloadScopeAuthorizationStrategy;
+
+  private DownloadScopeAuthorizationStrategy sut;
 
   @Before
   @SneakyThrows
@@ -97,9 +106,12 @@ public class DownloadScopeAuthorizationStrategyTest {
       this.mockMvc =
           MockMvcBuilders.webAppContextSetup(webApplicationContext).apply(springSecurity()).build();
     }
+
+    sut = init();
+    ReflectionTestUtils.setField( sut,"authZAuthorizationService", authZAuthorizationService);
   }
 
-  private DownloadScopeAuthorizationStrategy sut = init(); // System Under Test
+   // System Under Test
 
   public MetadataService getMetadataService() {
     val metadataService = mock(MetadataService.class);
@@ -120,8 +132,7 @@ public class DownloadScopeAuthorizationStrategyTest {
         DOWNLOAD_SUFFIX,
         SYSTEM_SCOPE,
         getMetadataService(),
-        PROVIDER_EGO,
-        authZAuthorizationService);
+        PROVIDER_EGO);
   }
 
   public MetadataEntity entity(
@@ -217,7 +228,7 @@ public class DownloadScopeAuthorizationStrategyTest {
     val choices = List.of(false, true);
     boolean everythingPassed = true;
     for (val hasOther : choices) {
-      val result = run_test(false, false, true, hasOther);
+      val result = run_test(false, true, true, hasOther);
       if (!result) {
         System.err.printf(
             "Access wasn't granted to non-expired token (scopes='%s')",
@@ -287,7 +298,7 @@ public class DownloadScopeAuthorizationStrategyTest {
     } catch (NotRetryableException e) {
       exception = e;
     }
-    assertNull(exception);
-    assertTrue(status);
+    assertNotNull(exception);
+    assertFalse(status);
   }
 }

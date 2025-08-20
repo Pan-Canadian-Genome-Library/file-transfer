@@ -95,15 +95,13 @@ public class SecurityConfig {
   @Bean
   @Scope("prototype")
   public DownloadScopeAuthorizationStrategy accessSecurity(
-      @Autowired MetadataService song,
-      @Autowired AuthZAuthorizationService authZAuthorizationService) {
+      @Autowired MetadataService song) {
     return new DownloadScopeAuthorizationStrategy(
         scopeProperties.getDownload().getStudy().getPrefix(),
         scopeProperties.getDownload().getStudy().getSuffix(),
         scopeProperties.getDownload().getSystem(),
         song,
-        provider,
-        authZAuthorizationService);
+        provider);
   }
 
   public ScopeProperties getScopeProperties() {
