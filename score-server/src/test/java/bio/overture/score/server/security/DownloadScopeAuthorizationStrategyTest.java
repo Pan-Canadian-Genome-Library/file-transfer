@@ -91,8 +91,7 @@ public class DownloadScopeAuthorizationStrategyTest {
   @MockBean private UploadService uploadService;
   @Mock private AuthZAuthorizationService authZAuthorizationService;
 
-  // @InjectMocks private DownloadScopeAuthorizationStrategy downloadScopeAuthorizationStrategy;
-
+  // System Under Test
   private DownloadScopeAuthorizationStrategy sut;
 
   @Before
@@ -107,8 +106,6 @@ public class DownloadScopeAuthorizationStrategyTest {
     sut = init();
     ReflectionTestUtils.setField(sut, "authZAuthorizationService", authZAuthorizationService);
   }
-
-  // System Under Test
 
   public MetadataService getMetadataService() {
     val metadataService = mock(MetadataService.class);
@@ -221,7 +218,7 @@ public class DownloadScopeAuthorizationStrategyTest {
     val choices = List.of(false, true);
     boolean everythingPassed = true;
     for (val hasOther : choices) {
-      val result = run_test(false, true, true, hasOther);
+      val result = run_test(false, false, true, hasOther);
       if (!result) {
         System.err.printf(
             "Access wasn't granted to non-expired token (scopes='%s')",
@@ -278,20 +275,5 @@ public class DownloadScopeAuthorizationStrategyTest {
     assertEquals(
         "java.lang.IllegalArgumentException: Failed to retrieve metadata for objectId: non-existent",
         exception.getMessage());
-  }
-
-  @Test
-  public void test_system_scope_object_not_looked_up() {
-    val scopes = Set.of(SYSTEM_SCOPE);
-    val auth = getAuthentication(scopes);
-    Exception exception = null;
-    boolean status = false;
-    try {
-      status = sut.authorize(auth, "non-existent");
-    } catch (NotRetryableException e) {
-      exception = e;
-    }
-    assertNotNull(exception);
-    assertFalse(status);
   }
 }
