@@ -48,10 +48,8 @@ public class DownloadScopeAuthorizationStrategy extends AbstractScopeAuthorizati
       MetadataService metadataService,
       @NonNull String provider) {
     super(studyPrefix, studySuffix, systemScope, metadataService, provider);
-    //this.authZAuthorizationService = authZAuthorizationService;
   }
 
-  @Override
   public boolean authorize(@NonNull Authentication authentication, @NonNull String objectId) {
 
     log.info("Checking authorization for objectId {}", objectId);
@@ -69,14 +67,15 @@ public class DownloadScopeAuthorizationStrategy extends AbstractScopeAuthorizati
 
       String studyId = fetchStudyId(objectId);
 
-      if ("pcglauthz".equalsIgnoreCase(this.getProvider()) && authentication instanceof BearerTokenAuthentication) {
-        return authZAuthorizationService.isAdmin(authentication) ||
-                authZAuthorizationService.canEditStudy(authentication, studyId);
+      if ("pcglauthz".equalsIgnoreCase(this.getProvider())
+          && authentication instanceof BearerTokenAuthentication) {
+        return authZAuthorizationService.isAdmin(authentication)
+            || authZAuthorizationService.canEditStudy(authentication, studyId);
       } else if ("keycloak".equalsIgnoreCase(this.getProvider())
-              && authentication instanceof JwtAuthenticationToken) {
+          && authentication instanceof JwtAuthenticationToken) {
         val authGrants =
-                keycloakAuthorizationService.fetchAuthorizationGrants(
-                        ((JwtAuthenticationToken) authentication).getToken().getTokenValue());
+            keycloakAuthorizationService.fetchAuthorizationGrants(
+                ((JwtAuthenticationToken) authentication).getToken().getTokenValue());
         return verifyOneOfSystemScope(extractGrantedScopesFromRpt(authGrants));
       } else {
         // Default to EGO provider

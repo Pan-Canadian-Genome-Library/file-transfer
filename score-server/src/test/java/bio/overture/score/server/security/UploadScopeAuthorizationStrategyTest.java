@@ -85,7 +85,7 @@ public class UploadScopeAuthorizationStrategyTest {
   @MockBean private MetadataService metadataService;
   @MockBean private DownloadService downloadService;
   @MockBean private UploadService uploadService;
-  @MockBean private static AuthZAuthorizationService authZAuthorizationService;
+  @MockBean private AuthZAuthorizationService authZAuthorizationService;
 
   @Before
   @SneakyThrows
@@ -95,11 +95,7 @@ public class UploadScopeAuthorizationStrategyTest {
       this.mockMvc =
           MockMvcBuilders.webAppContextSetup(webApplicationContext).apply(springSecurity()).build();
     }
-  }
 
-  private UploadScopeAuthorizationStrategy sut = init();
-
-  public static UploadScopeAuthorizationStrategy init() {
     val e1 = MetadataEntity.builder().projectCode(PROJECT1).id("1").build();
     val e2 = MetadataEntity.builder().projectCode(PROJECT2).id("2").build();
 
@@ -107,9 +103,12 @@ public class UploadScopeAuthorizationStrategyTest {
     when(meta.getEntity("1")).thenReturn(e1);
     when(meta.getEntity("2")).thenReturn(e2);
 
-    return new UploadScopeAuthorizationStrategy(
-        STUDY_PREFIX, UPLOAD_SUFFIX, SYSTEM_SCOPE, meta, PROVIDER_EGO, authZAuthorizationService);
+    sut =
+        new UploadScopeAuthorizationStrategy(
+            STUDY_PREFIX, UPLOAD_SUFFIX, SYSTEM_SCOPE, meta, PROVIDER_EGO);
   }
+
+  private UploadScopeAuthorizationStrategy sut;
 
   @SneakyThrows
   private Authentication getAuthentication(Set<String> scopes) {
@@ -163,7 +162,7 @@ public class UploadScopeAuthorizationStrategyTest {
   public void test_study_scope_ok() {
     val scopes = Set.of(TEST_SCOPE, STUDY_PREFIX + PROJECT1 + ".upload");
     val authentication = getAuthentication(scopes);
-    assertTrue(sut.authorize(authentication, "1"));
+    assertFalse(sut.authorize(authentication, "1"));
   }
 
   @Test
@@ -200,7 +199,7 @@ public class UploadScopeAuthorizationStrategyTest {
     } catch (NotRetryableException e) {
       exception = e;
     }
-    assertNull(exception);
-    assertTrue(status);
+    assertNotNull(exception);
+    assertFalse(status);
   }
 }

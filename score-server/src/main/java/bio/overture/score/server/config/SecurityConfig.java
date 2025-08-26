@@ -17,7 +17,6 @@
  */
 package bio.overture.score.server.config;
 
-import bio.overture.score.server.auth.AuthZAuthorizationService;
 import bio.overture.score.server.auth.AuthzTokenIntrospector;
 import bio.overture.score.server.metadata.MetadataService;
 import bio.overture.score.server.properties.ScopeProperties;
@@ -80,16 +79,14 @@ public class SecurityConfig {
 
   @Bean
   public UploadScopeAuthorizationStrategy projectSecurity(
-      @Autowired MetadataService metadataService,
-      @Autowired AuthZAuthorizationService authZAuthorizationService) {
+      @Autowired MetadataService metadataService) {
 
     return new UploadScopeAuthorizationStrategy(
         scopeProperties.getUpload().getStudy().getPrefix(),
         scopeProperties.getUpload().getStudy().getSuffix(),
         scopeProperties.getUpload().getSystem(),
         metadataService,
-        provider,
-        authZAuthorizationService);
+        provider);
   }
 
   @Bean
