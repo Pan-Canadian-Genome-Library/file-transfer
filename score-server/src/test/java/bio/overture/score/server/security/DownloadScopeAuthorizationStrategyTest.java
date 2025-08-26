@@ -47,9 +47,7 @@ import lombok.val;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -62,7 +60,6 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.util.ReflectionUtils;
 import org.springframework.web.context.WebApplicationContext;
 
 @SpringBootTest
@@ -94,7 +91,7 @@ public class DownloadScopeAuthorizationStrategyTest {
   @MockBean private UploadService uploadService;
   @Mock private AuthZAuthorizationService authZAuthorizationService;
 
-  //@InjectMocks private DownloadScopeAuthorizationStrategy downloadScopeAuthorizationStrategy;
+  // @InjectMocks private DownloadScopeAuthorizationStrategy downloadScopeAuthorizationStrategy;
 
   private DownloadScopeAuthorizationStrategy sut;
 
@@ -108,10 +105,10 @@ public class DownloadScopeAuthorizationStrategyTest {
     }
 
     sut = init();
-    ReflectionTestUtils.setField( sut,"authZAuthorizationService", authZAuthorizationService);
+    ReflectionTestUtils.setField(sut, "authZAuthorizationService", authZAuthorizationService);
   }
 
-   // System Under Test
+  // System Under Test
 
   public MetadataService getMetadataService() {
     val metadataService = mock(MetadataService.class);
@@ -128,11 +125,7 @@ public class DownloadScopeAuthorizationStrategyTest {
 
   public DownloadScopeAuthorizationStrategy init() {
     return new DownloadScopeAuthorizationStrategy(
-        STUDY_PREFIX,
-        DOWNLOAD_SUFFIX,
-        SYSTEM_SCOPE,
-        getMetadataService(),
-        PROVIDER_EGO);
+        STUDY_PREFIX, DOWNLOAD_SUFFIX, SYSTEM_SCOPE, getMetadataService(), PROVIDER_EGO);
   }
 
   public MetadataEntity entity(

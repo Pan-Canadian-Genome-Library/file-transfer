@@ -18,26 +18,22 @@
 package bio.overture.score.server.security.scope;
 
 import bio.overture.score.server.auth.AuthZAuthorizationService;
+import bio.overture.score.server.auth.AuthzTokenIntrospector;
 import bio.overture.score.server.exception.NotRetryableException;
 import bio.overture.score.server.metadata.MetadataService;
 import bio.overture.score.server.repository.auth.KeycloakAuthorizationService;
 import bio.overture.score.server.security.Access;
-import bio.overture.score.server.util.Scopes;
+import java.util.Set;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthentication;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-
-import static bio.overture.score.server.util.Scopes.extractGrantedScopesFromRpt;
 
 @Slf4j
 public class DownloadScopeAuthorizationStrategy extends AbstractScopeAuthorizationStrategy {
 
-  @Autowired
-  private AuthZAuthorizationService authZAuthorizationService;
+  @Autowired private AuthZAuthorizationService authZAuthorizationService;
 
   @Autowired private KeycloakAuthorizationService keycloakAuthorizationService;
 
@@ -65,32 +61,31 @@ public class DownloadScopeAuthorizationStrategy extends AbstractScopeAuthorizati
     if (accessType.isControlled()) {
       log.info("File access is CONTROLLED - checking user permissions");
 
-      String studyId = fetchStudyId(objectId);
+      if ("pcglauthz".equalsIgnoreCase(this.getProvider())) {
 
-      if ("pcglauthz".equalsIgnoreCase(this.getProvider())
-          && authentication instanceof BearerTokenAuthentication) {
-        return authZAuthorizationService.isAdmin(authentication)
-            || authZAuthorizationService.canEditStudy(authentication, studyId);
-      } else if ("keycloak".equalsIgnoreCase(this.getProvider())
-          && authentication instanceof JwtAuthenticationToken) {
-        val authGrants =
-            keycloakAuthorizationService.fetchAuthorizationGrants(
-                ((JwtAuthenticationToken) authentication).getToken().getTokenValue());
-        return verifyOneOfSystemScope(extractGrantedScopesFromRpt(authGrants));
-      } else {
-        // Default to EGO provider
-        // extract scopes from authentication object
-        return verifyOneOfSystemScope(Scopes.extractGrantedScopes(authentication));
+        String studyId = fetchStudyId(objectId);
+        if (studyId == null) {
+          log.warn("No study found for objectId {}", objectId);
+          return false;
+        }
+        val claims = AuthzTokenIntrospector.extractClaimsFromAuthentication(authentication);
+
+        return claims.isPresent()
+            ? authZAuthorizationService.canReadStudy(claims.get(), studyId)
+            : false;
       }
 
+      Set<String> grantedScopes = getGrantedScopes(authentication);
+      log.info("Checking system-level authorization for objectId {}", objectId);
+      return verifyOneOfSystemScope(grantedScopes)
+          || verifyOneOfStudyScope(grantedScopes, objectId);
+    } else {
+      val msg =
+          String.format(
+              "Invalid access type '%s' found in Metadata record for object id: %s",
+              fileAccessType, objectId);
+      log.error(msg);
+      throw new NotRetryableException(new IllegalArgumentException(msg));
     }
-
-    // Step 4: Unexpected access type
-    String msg =
-        String.format(
-            "Invalid access type '%s' found in Metadata record for object id: %s",
-            fileAccessType, objectId);
-    log.error(msg);
-    throw new NotRetryableException(new IllegalArgumentException(msg));
   }
 }

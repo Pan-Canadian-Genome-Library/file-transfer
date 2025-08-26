@@ -17,16 +17,14 @@
 package bio.overture.score.server.security.scope;
 
 import bio.overture.score.server.auth.AuthZAuthorizationService;
+import bio.overture.score.server.auth.AuthzTokenIntrospector;
 import bio.overture.score.server.metadata.MetadataService;
 import bio.overture.score.server.repository.auth.KeycloakAuthorizationService;
-import bio.overture.score.server.util.Scopes;
 import java.util.Set;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.server.resource.authentication.BearerTokenAuthentication;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 @Slf4j
 public class UploadScopeAuthorizationStrategy extends AbstractScopeAuthorizationStrategy {
@@ -45,27 +43,29 @@ public class UploadScopeAuthorizationStrategy extends AbstractScopeAuthorization
   }
 
   public boolean authorize(@NonNull Authentication authentication, @NonNull final String objectId) {
-    log.info("Checking upload authorization for objectId {}", objectId);
 
-    String studyId = fetchStudyId(objectId);
+    // PCGL AuthZ
+    if ("pcglauthz".equalsIgnoreCase(this.getProvider())) {
+      String studyId = fetchStudyId(objectId);
 
-    if (studyId == null) {
-      log.warn("No study found for objectId {}", objectId);
-      return false;
+      if (studyId == null) {
+        log.warn("No study found for objectId {}", objectId);
+        return false;
+      }
+      val claims = AuthzTokenIntrospector.extractClaimsFromAuthentication(authentication);
+      return claims.isPresent()
+          ? authZAuthorizationService.canEditStudy(claims.get(), studyId)
+          : false;
     }
 
-    Set<String> grantedScopes;
-    if ("pcglauthz".equalsIgnoreCase(this.getProvider())
-        && authentication instanceof BearerTokenAuthentication) {
-      return authZAuthorizationService.isAdmin(authentication);
-    } else if ("keycloak".equalsIgnoreCase(this.getProvider())
-        && authentication instanceof JwtAuthenticationToken) {
-      val authGrants =
-          keycloakAuthorizationService.fetchAuthorizationGrants(
-              ((JwtAuthenticationToken) authentication).getToken().getTokenValue());
-      return verifyOneOfSystemScope(extractGrantedScopesFromRpt(authGrants));
-    } else {
-      return verifyOneOfSystemScope(Scopes.extractGrantedScopes(authentication));
+    // Provider is not PCGL AuthZ:
+    Set<String> grantedScopes = getGrantedScopes(authentication);
+
+    if (verifyOneOfSystemScope(grantedScopes)) {
+      log.info("System-level upload authorization granted");
+      return true;
     }
+    log.info("Checking study-level authorization for objectId {}", objectId);
+    return verifyOneOfStudyScope(grantedScopes, objectId);
   }
 }

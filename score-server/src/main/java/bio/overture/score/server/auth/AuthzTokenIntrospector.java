@@ -2,15 +2,17 @@ package bio.overture.score.server.auth;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -43,22 +45,16 @@ public class AuthzTokenIntrospector implements OpaqueTokenIntrospector {
     HttpEntity<Void> request = new HttpEntity<>(headers);
 
     try {
-      ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, request, Map.class);
+      ResponseEntity<AuthZUserResponse> response =
+          restTemplate.exchange(url, HttpMethod.GET, request, AuthZUserResponse.class);
 
-      Map<String, Object> userDetails = response.getBody();
+      AuthZUserResponse userDetails = response.getBody();
 
-      AuthZClaims claims = extractClaims(userDetails);
+      AuthZClaims claims = convertUserResponseToClaims(userDetails);
 
-      Map<String, Object> claimsMap =
-          Map.of(
-              "sub", claims.getSub(),
-              "emails", claims.getEmails(),
-              "primary_email", claims.getPrimaryEmail(),
-              "editable_studies", claims.getEditableStudies(),
-              "readable_studies", claims.getReadableStudies(),
-              "groups", claims.getGroups());
-      List<GrantedAuthority> authorities = extractAuthorities(claimsMap);
-      return new OAuth2IntrospectionAuthenticatedPrincipal(claimsMap, authorities);
+      Map<String, Object> claimsMap = Map.of("authzClaims", claims);
+      return new OAuth2IntrospectionAuthenticatedPrincipal(
+          claimsMap, List.of(new SimpleGrantedAuthority("user")));
 
     } catch (Exception e) {
       log.error("Failed to introspect token with AuthZ", e);
@@ -66,38 +62,33 @@ public class AuthzTokenIntrospector implements OpaqueTokenIntrospector {
     }
   }
 
-  private AuthZClaims extractClaims(Map<String, Object> userDetails) {
-    Map<String, Object> userinfo = (Map<String, Object>) userDetails.get("userinfo");
-    Map<String, Object> studyAuths = (Map<String, Object>) userDetails.get("study_authorizations");
-    List<Map<String, Object>> groups = (List<Map<String, Object>>) userDetails.get("groups");
+  public static Optional<AuthZClaims> extractClaimsFromAuthentication(
+      Authentication authentication) {
+    val principal = authentication.getPrincipal();
+    if (!(principal instanceof OAuth2AuthenticatedPrincipal)) {
+      return Optional.empty();
+    }
+    val claims = ((OAuth2AuthenticatedPrincipal) principal).getAttribute("authzClaims");
 
-    List<Map<String, Object>> emails = (List<Map<String, Object>>) userinfo.get("emails");
-    List<Map<String, Object>> safeEmails = (emails != null) ? emails : List.of();
+    if (!(claims instanceof AuthZClaims)) {
+      return Optional.empty();
+    }
 
-    String primaryEmail =
-        safeEmails.stream()
-            .filter(e -> "official".equalsIgnoreCase((String) e.get("type")))
-            .map(e -> (String) e.get("address"))
-            .findFirst()
-            .orElseGet(
-                () ->
-                    safeEmails.stream()
-                        .map(e -> (String) e.get("address"))
-                        .findFirst()
-                        .orElse(null));
-
-    return AuthZClaims.builder()
-        .sub((String) userinfo.get("pcgl_id"))
-        .emails(safeEmails)
-        .primaryEmail(primaryEmail)
-        .editableStudies((List<String>) studyAuths.get("editable_studies"))
-        .readableStudies((List<String>) studyAuths.get("readable_studies"))
-        .groups(groups.stream().map(g -> g.get("name").toString()).collect(Collectors.toList()))
-        .build();
+    return Optional.of((AuthZClaims) claims);
   }
 
-  private List<GrantedAuthority> extractAuthorities(Map<String, Object> claims) {
-    List<String> groups = (List<String>) claims.getOrDefault("groups", List.of());
-    return groups.stream().map(SimpleGrantedAuthority::new).collect(Collectors.toList());
+  private AuthZClaims convertUserResponseToClaims(AuthZUserResponse userResponse) {
+
+    List<String> groupNames =
+        userResponse.getGroups().stream()
+            .map(group -> group.getName())
+            .collect(Collectors.toList());
+
+    return AuthZClaims.builder()
+        .sub(userResponse.getUserinfo().getPcgl_id())
+        .editableStudies(userResponse.getStudy_authorizations().getEditable_studies())
+        .readableStudies(userResponse.getStudy_authorizations().getReadable_studies())
+        .groups(groupNames)
+        .build();
   }
 }

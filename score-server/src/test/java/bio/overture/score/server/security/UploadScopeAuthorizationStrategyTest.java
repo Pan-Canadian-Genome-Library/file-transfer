@@ -162,7 +162,7 @@ public class UploadScopeAuthorizationStrategyTest {
   public void test_study_scope_ok() {
     val scopes = Set.of(TEST_SCOPE, STUDY_PREFIX + PROJECT1 + ".upload");
     val authentication = getAuthentication(scopes);
-    assertFalse(sut.authorize(authentication, "1"));
+    assertTrue(sut.authorize(authentication, "1"));
   }
 
   @Test
@@ -199,7 +199,7 @@ public class UploadScopeAuthorizationStrategyTest {
     } catch (NotRetryableException e) {
       exception = e;
     }
-    assertNotNull(exception);
-    assertFalse(status);
+    assertNull(exception);
+    assertTrue(status);
   }
 }
