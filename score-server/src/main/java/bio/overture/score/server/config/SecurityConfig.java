@@ -78,6 +78,64 @@ public class SecurityConfig {
   }
 
   @Bean
+  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http.csrf().disable();
+    http.authorizeHttpRequests(
+            authorize ->
+                authorize
+                    .antMatchers("/isAlive")
+                    .permitAll()
+                    .antMatchers("/studies/**")
+                    .permitAll()
+                    .antMatchers("/upload/**")
+                    .permitAll()
+                    .antMatchers("/entities/**")
+                    .permitAll()
+                    .antMatchers("/export/**")
+                    .permitAll()
+                    .antMatchers("/schemas/**")
+                    .permitAll()
+                    .antMatchers()
+                    .permitAll()
+                    .antMatchers(
+                        swaggerConfig.getAlternateSwaggerUrl(),
+                        "/swagger**",
+                        "/swagger-ui.html",
+                        "/swagger-ui**",
+                        "/swagger-resources/**",
+                        "/v2/api-docs/**",
+                        "/webjars/**")
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated())
+        .oauth2ResourceServer(
+            oauth2 -> oauth2.authenticationManagerResolver(tokenAuthenticationManagerResolver()));
+
+    return http.build();
+  }
+
+  @Bean
+  public AuthenticationManagerResolver<HttpServletRequest> tokenAuthenticationManagerResolver() {
+
+    // PCGL AuthZ Provider:
+    if (provider.equals("pcglauthz")) {
+      return (request) ->
+          new ProviderManager(new OpaqueTokenAuthenticationProvider(authzTokenIntrospector));
+    }
+
+    // Non PCGL Authz Provider:
+    // Auth Managers for JWT and for ApiKeys. JWT uses the default auth provider,
+    // but OpaqueTokens are handled by the custom ApiKeyIntrospector
+    AuthenticationManager jwt = new ProviderManager(new JwtAuthenticationProvider(jwtDecoder));
+    AuthenticationManager opaqueToken =
+        new ProviderManager(
+            new OpaqueTokenAuthenticationProvider(
+                new ApiKeyIntrospector(url, clientId, clientSecret, tokenName)));
+
+    return (request) -> useJwt(request) ? jwt : opaqueToken;
+  }
+
+  @Bean
   public UploadScopeAuthorizationStrategy projectSecurity(
       @Autowired MetadataService metadataService) {
 
@@ -92,12 +150,12 @@ public class SecurityConfig {
   @Bean
   @Scope("prototype")
   public DownloadScopeAuthorizationStrategy accessSecurity(
-      @Autowired MetadataService song) {
+      @Autowired MetadataService metadataService) {
     return new DownloadScopeAuthorizationStrategy(
         scopeProperties.getDownload().getStudy().getPrefix(),
         scopeProperties.getDownload().getStudy().getSuffix(),
         scopeProperties.getDownload().getSystem(),
-        song,
+        metadataService,
         provider);
   }
 
@@ -124,78 +182,5 @@ public class SecurityConfig {
       }
     }
     return true;
-  }
-
-  @Bean
-  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    http.authorizeHttpRequests(
-            authorize ->
-                authorize
-                    .antMatchers("/isAlive")
-                    .permitAll()
-                    .antMatchers("/studies/**")
-                    .permitAll()
-                    .antMatchers("/upload/**")
-                    .permitAll()
-                    .antMatchers("/entities/**")
-                    .permitAll()
-                    .antMatchers("/export/**")
-                    .permitAll()
-                    .antMatchers("/schemas/**")
-                    .permitAll()
-                    .antMatchers(swaggerConfig.getAlternateSwaggerUrl())
-                    .permitAll()
-                    .antMatchers(
-                        "/swagger**",
-                        "/swagger-ui.html",
-                        "/swagger-ui**",
-                        "/swagger-resources/**",
-                        "/v2/api-docs/**",
-                        "/webjars/**")
-                    .permitAll()
-                    .anyRequest()
-                    .authenticated())
-        .oauth2ResourceServer(
-            oauth2 -> oauth2.authenticationManagerResolver(tokenAuthenticationManagerResolver()));
-
-    return http.build();
-  }
-
-  @Bean
-  public AuthenticationManagerResolver<HttpServletRequest> tokenAuthenticationManagerResolver() {
-    AuthenticationManager jwtManager =
-        new ProviderManager(new JwtAuthenticationProvider(jwtDecoder));
-
-    AuthenticationManager authzOpaqueManager =
-        new ProviderManager(new OpaqueTokenAuthenticationProvider(authzTokenIntrospector));
-
-    return (request) -> {
-      if (isAuthZRequest(request)) {
-        return authzOpaqueManager;
-      } else {
-        return jwtManager;
-      }
-    };
-  }
-
-  private boolean isAuthZRequest(HttpServletRequest request) {
-    // Option 1: Check for custom header
-    String providerHeader = request.getHeader("X-Auth-Provider");
-    if (providerHeader != null && providerHeader.equalsIgnoreCase("authz")) {
-      return true;
-    }
-
-    // Option 2: Detect based on token format
-    String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
-    if (authHeader != null && authHeader.startsWith("Bearer ")) {
-      String token = authHeader.substring(7);
-      return !isJwtToken(token); // Not a JWT => probably opaque AuthZ token
-    }
-
-    return false;
-  }
-
-  private boolean isJwtToken(String token) {
-    return token.split("\\.").length == 3;
   }
 }
