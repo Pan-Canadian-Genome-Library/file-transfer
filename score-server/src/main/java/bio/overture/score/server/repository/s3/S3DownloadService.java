@@ -102,7 +102,7 @@ public class S3DownloadService implements DownloadService {
 
       val objectKey = ObjectKeys.getObjectKey(dataDir, objectId);
 
-      var objectSpec = getSpecification(objectId);
+      ObjectSpecification objectSpec = getSpecification(objectId);
 
       if (objectSpec == null) {
         ObjectMetadata metadata =
