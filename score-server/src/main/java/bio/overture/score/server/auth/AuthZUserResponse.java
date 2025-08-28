@@ -1,47 +1,57 @@
 package bio.overture.score.server.auth;
 
+import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.Value;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class AuthZUserResponse {
 
   @Data
   @AllArgsConstructor
-  public class UserInfo {
+  @NoArgsConstructor
+  public static class UserInfo {
 
     @Data
     @AllArgsConstructor
-    public class UserEmail {
+    @NoArgsConstructor
+    public static class UserEmail {
 
-      private final String address;
-      private final String type;
+      private  String address;
+      private String type;
     }
 
-    private final List<UserEmail> emails;
-    private final String pcgl_id;
+    private  List<UserEmail> emails = new ArrayList<>();
+    private  String pcgl_id;
+    private boolean site_curator;
+    private boolean site_admin;
   }
 
   @Data
   @AllArgsConstructor
-  public class StudyAuthorizations {
+  @NoArgsConstructor
+  public static class StudyAuthorizations {
 
-    private final List<String> editable_studies;
-    private final List<String> readable_studies;
+    private  List<String> editable_studies = new ArrayList<>();
+    private  List<String> readable_studies = new ArrayList<>();
   }
 
   @Data
   @AllArgsConstructor
-  public class Group {
+  @NoArgsConstructor
+  public static class Group {
 
-    private final String name;
-    private final String description;
-    private final int id;
+    private  String name;
+    private  String description;
+    private  int id;
   }
 
-  private final UserInfo userinfo;
-  private final StudyAuthorizations study_authorizations;
-  private final List<Group> groups;
+  private  UserInfo userinfo;
+  private  StudyAuthorizations study_authorizations;
+  private  List<Group> groups;
 }
