@@ -16,14 +16,22 @@
  */
 package bio.overture.score.server.security.scope;
 
+import bio.overture.score.server.auth.AuthZAuthorizationService;
+import bio.overture.score.server.auth.AuthzTokenIntrospector;
 import bio.overture.score.server.metadata.MetadataService;
+import bio.overture.score.server.repository.auth.KeycloakAuthorizationService;
 import java.util.Set;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 
 @Slf4j
 public class UploadScopeAuthorizationStrategy extends AbstractScopeAuthorizationStrategy {
+
+  @Autowired private AuthZAuthorizationService authZAuthorizationService;
+
+  @Autowired private KeycloakAuthorizationService keycloakAuthorizationService;
 
   public UploadScopeAuthorizationStrategy(
       @NonNull String studyPrefix,
@@ -36,6 +44,21 @@ public class UploadScopeAuthorizationStrategy extends AbstractScopeAuthorization
 
   public boolean authorize(@NonNull Authentication authentication, @NonNull final String objectId) {
 
+    // PCGL AuthZ
+    if ("pcglauthz".equalsIgnoreCase(this.getProvider())) {
+      String studyId = fetchStudyId(objectId);
+
+      if (studyId == null) {
+        log.warn("No study found for objectId {}", objectId);
+        return false;
+      }
+      val claims = AuthzTokenIntrospector.extractClaimsFromAuthentication(authentication);
+      return claims.isPresent()
+          ? authZAuthorizationService.canEditStudy(claims.get(), studyId)
+          : false;
+    }
+
+    // Provider is not PCGL AuthZ:
     Set<String> grantedScopes = getGrantedScopes(authentication);
 
     if (verifyOneOfSystemScope(grantedScopes)) {

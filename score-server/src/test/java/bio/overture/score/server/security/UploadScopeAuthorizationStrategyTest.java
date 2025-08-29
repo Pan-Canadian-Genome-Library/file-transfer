@@ -23,6 +23,7 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 
+import bio.overture.score.server.auth.AuthZAuthorizationService;
 import bio.overture.score.server.config.SecurityConfig;
 import bio.overture.score.server.exception.NotRetryableException;
 import bio.overture.score.server.metadata.MetadataEntity;
@@ -84,6 +85,7 @@ public class UploadScopeAuthorizationStrategyTest {
   @MockBean private MetadataService metadataService;
   @MockBean private DownloadService downloadService;
   @MockBean private UploadService uploadService;
+  @MockBean private AuthZAuthorizationService authZAuthorizationService;
 
   @Before
   @SneakyThrows
@@ -93,11 +95,7 @@ public class UploadScopeAuthorizationStrategyTest {
       this.mockMvc =
           MockMvcBuilders.webAppContextSetup(webApplicationContext).apply(springSecurity()).build();
     }
-  }
 
-  private UploadScopeAuthorizationStrategy sut = init();
-
-  public static UploadScopeAuthorizationStrategy init() {
     val e1 = MetadataEntity.builder().projectCode(PROJECT1).id("1").build();
     val e2 = MetadataEntity.builder().projectCode(PROJECT2).id("2").build();
 
@@ -105,9 +103,12 @@ public class UploadScopeAuthorizationStrategyTest {
     when(meta.getEntity("1")).thenReturn(e1);
     when(meta.getEntity("2")).thenReturn(e2);
 
-    return new UploadScopeAuthorizationStrategy(
-        STUDY_PREFIX, UPLOAD_SUFFIX, SYSTEM_SCOPE, meta, PROVIDER_EGO);
+    sut =
+        new UploadScopeAuthorizationStrategy(
+            STUDY_PREFIX, UPLOAD_SUFFIX, SYSTEM_SCOPE, meta, PROVIDER_EGO);
   }
+
+  private UploadScopeAuthorizationStrategy sut;
 
   @SneakyThrows
   private Authentication getAuthentication(Set<String> scopes) {

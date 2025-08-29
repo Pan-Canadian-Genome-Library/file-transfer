@@ -24,6 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 
+import bio.overture.score.server.auth.AuthZAuthorizationService;
 import bio.overture.score.server.config.SecurityConfig;
 import bio.overture.score.server.exception.NotRetryableException;
 import bio.overture.score.server.metadata.MetadataEntity;
@@ -46,6 +47,7 @@ import lombok.val;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -55,6 +57,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
@@ -86,6 +89,10 @@ public class DownloadScopeAuthorizationStrategyTest {
   @MockBean private MetadataService metadataService;
   @MockBean private DownloadService downloadService;
   @MockBean private UploadService uploadService;
+  @Mock private AuthZAuthorizationService authZAuthorizationService;
+
+  // System Under Test
+  private DownloadScopeAuthorizationStrategy sut;
 
   @Before
   @SneakyThrows
@@ -95,9 +102,10 @@ public class DownloadScopeAuthorizationStrategyTest {
       this.mockMvc =
           MockMvcBuilders.webAppContextSetup(webApplicationContext).apply(springSecurity()).build();
     }
-  }
 
-  private DownloadScopeAuthorizationStrategy sut = init(); // System Under Test
+    sut = init();
+    ReflectionTestUtils.setField(sut, "authZAuthorizationService", authZAuthorizationService);
+  }
 
   public MetadataService getMetadataService() {
     val metadataService = mock(MetadataService.class);
@@ -267,20 +275,5 @@ public class DownloadScopeAuthorizationStrategyTest {
     assertEquals(
         "java.lang.IllegalArgumentException: Failed to retrieve metadata for objectId: non-existent",
         exception.getMessage());
-  }
-
-  @Test
-  public void test_system_scope_object_not_looked_up() {
-    val scopes = Set.of(SYSTEM_SCOPE);
-    val auth = getAuthentication(scopes);
-    Exception exception = null;
-    boolean status = false;
-    try {
-      status = sut.authorize(auth, "non-existent");
-    } catch (NotRetryableException e) {
-      exception = e;
-    }
-    assertNull(exception);
-    assertTrue(status);
   }
 }

@@ -96,14 +96,14 @@ public class JWTSecurityTest {
       downloadScopesMap =
           Map.of(
               VALID_SYSTEM, List.of(resolveSystemDownloadScope(), "id.READ"),
-              VALID_STUDY, List.of(resolveStudyDownloadScope(EXISTING_PROJECT_CODE), "id.READ"),
+              VALID_STUDY, List.of(resolveStudyDownloadScope(EXISTING_PROJECT_CODE), "score.READ"),
               INVALID_STUDY,
                   List.of(resolveStudyDownloadScope(NON_EXISTING_PROJECT_CODE), "id.READ"));
 
       uploadScopesMap =
           Map.of(
               VALID_SYSTEM, List.of(resolveSystemUploadScope(), "id.WRITE"),
-              VALID_STUDY, List.of(resolveStudyUploadScope(EXISTING_PROJECT_CODE), "id.WRITE"),
+              VALID_STUDY, List.of(resolveStudyUploadScope(EXISTING_PROJECT_CODE), "score.WRITE"),
               INVALID_STUDY,
                   List.of(resolveStudyUploadScope(NON_EXISTING_PROJECT_CODE), "id.WRITE"));
     }

@@ -22,6 +22,9 @@ import static bio.overture.score.server.util.Scopes.extractGrantedScopesFromRpt;
 import bio.overture.score.server.exception.NotRetryableException;
 import bio.overture.score.server.metadata.MetadataService;
 import bio.overture.score.server.repository.auth.KeycloakAuthorizationService;
+import bio.overture.score.server.security.KeycloakPermission;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import lombok.Getter;
 import lombok.NonNull;
@@ -111,6 +114,24 @@ public abstract class AbstractScopeAuthorizationStrategy {
     } else {
       grantedScopes = extractGrantedScopes(authentication);
     }
+    return grantedScopes;
+  }
+
+  public static Set<String> extractGrantedScopesFromRpt(List<KeycloakPermission> permissionList) {
+    Set<String> grantedScopes = new HashSet();
+
+    permissionList.stream()
+        .filter(perm -> perm.getScopes() != null)
+        .forEach(
+            permission -> {
+              permission.getScopes().stream()
+                  .forEach(
+                      scope -> {
+                        val fullScope = permission.getRsname() + "." + scope;
+                        grantedScopes.add(fullScope);
+                      });
+            });
+
     return grantedScopes;
   }
 }

@@ -17,17 +17,25 @@
  */
 package bio.overture.score.server.security.scope;
 
+import bio.overture.score.server.auth.AuthZAuthorizationService;
+import bio.overture.score.server.auth.AuthzTokenIntrospector;
 import bio.overture.score.server.exception.NotRetryableException;
 import bio.overture.score.server.metadata.MetadataService;
+import bio.overture.score.server.repository.auth.KeycloakAuthorizationService;
 import bio.overture.score.server.security.Access;
 import java.util.Set;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 
 @Slf4j
 public class DownloadScopeAuthorizationStrategy extends AbstractScopeAuthorizationStrategy {
+
+  @Autowired private AuthZAuthorizationService authZAuthorizationService;
+
+  @Autowired private KeycloakAuthorizationService keycloakAuthorizationService;
 
   public DownloadScopeAuthorizationStrategy(
       @NonNull String studyPrefix,
@@ -38,24 +46,39 @@ public class DownloadScopeAuthorizationStrategy extends AbstractScopeAuthorizati
     super(studyPrefix, studySuffix, systemScope, metadataService, provider);
   }
 
-  @Override
-  public boolean authorize(@NonNull Authentication authentication, @NonNull final String objectId) {
+  public boolean authorize(@NonNull Authentication authentication, @NonNull String objectId) {
 
-    Set<String> grantedScopes = getGrantedScopes(authentication);
+    log.info("Checking authorization for objectId {}", objectId);
 
-    log.info("Checking system-level authorization for objectId {}", objectId);
-    if (verifyOneOfSystemScope(grantedScopes)) {
-      return true;
-    }
-    log.info("Checking access control level for objectId {}", objectId);
     val fileAccessType = fetchFileAccessType(objectId);
     val accessType = new Access(fileAccessType);
+
     if (accessType.isOpen()) {
-      log.info("Access control level is open -- access granted");
+      log.info("File access is OPEN - granting access");
       return true;
-    } else if (accessType.isControlled()) {
-      log.info("Access control level is controlled -- checking study level authorization.");
-      return verifyOneOfStudyScope(grantedScopes, objectId);
+    }
+
+    if (accessType.isControlled()) {
+      log.info("File access is CONTROLLED - checking user permissions");
+
+      if ("pcglauthz".equalsIgnoreCase(this.getProvider())) {
+
+        String studyId = fetchStudyId(objectId);
+        if (studyId == null) {
+          log.warn("No study found for objectId {}", objectId);
+          return false;
+        }
+        val claims = AuthzTokenIntrospector.extractClaimsFromAuthentication(authentication);
+
+        return claims.isPresent()
+            ? authZAuthorizationService.canReadStudy(claims.get(), studyId)
+            : false;
+      }
+
+      Set<String> grantedScopes = getGrantedScopes(authentication);
+      log.info("Checking system-level authorization for objectId {}", objectId);
+      return verifyOneOfSystemScope(grantedScopes)
+          || verifyOneOfStudyScope(grantedScopes, objectId);
     } else {
       val msg =
           String.format(
