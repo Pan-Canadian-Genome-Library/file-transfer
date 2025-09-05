@@ -1,16 +1,15 @@
-package bio.overture.score.server.auth;
+package bio.overture.score.server.security.authz.dto;
 
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Value;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class AuthZUserResponse {
+public class AuthZUserDetailsResponse {
 
   @Data
   @AllArgsConstructor
@@ -22,12 +21,12 @@ public class AuthZUserResponse {
     @NoArgsConstructor
     public static class UserEmail {
 
-      private  String address;
+      private String address;
       private String type;
     }
 
-    private  List<UserEmail> emails = new ArrayList<>();
-    private  String pcgl_id;
+    private List<UserEmail> emails = new ArrayList<>();
+    private String pcgl_id;
     private boolean site_curator;
     private boolean site_admin;
   }
@@ -37,8 +36,8 @@ public class AuthZUserResponse {
   @NoArgsConstructor
   public static class StudyAuthorizations {
 
-    private  List<String> editable_studies = new ArrayList<>();
-    private  List<String> readable_studies = new ArrayList<>();
+    private List<String> editable_studies = new ArrayList<>();
+    private List<String> readable_studies = new ArrayList<>();
   }
 
   @Data
@@ -46,12 +45,12 @@ public class AuthZUserResponse {
   @NoArgsConstructor
   public static class Group {
 
-    private  String name;
-    private  String description;
-    private  int id;
+    private String name;
+    private String description;
+    private int id;
   }
 
-  private  UserInfo userinfo;
-  private  StudyAuthorizations study_authorizations;
-  private  List<Group> groups;
+  private UserInfo userinfo;
+  private StudyAuthorizations study_authorizations;
+  private List<Group> groups;
 }

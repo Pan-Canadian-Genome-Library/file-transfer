@@ -17,10 +17,11 @@
  */
 package bio.overture.score.server.config;
 
-import bio.overture.score.server.auth.AuthzTokenIntrospector;
 import bio.overture.score.server.metadata.MetadataService;
 import bio.overture.score.server.properties.ScopeProperties;
 import bio.overture.score.server.security.ApiKeyIntrospector;
+import bio.overture.score.server.security.authz.AuthZServiceTokenAuthenticationFilter;
+import bio.overture.score.server.security.authz.AuthZUserTokenIntrospector;
 import bio.overture.score.server.security.scope.DownloadScopeAuthorizationStrategy;
 import bio.overture.score.server.security.scope.UploadScopeAuthorizationStrategy;
 import java.util.UUID;
@@ -44,6 +45,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.OpaqueTokenAuthenticationProvider;
 import org.springframework.security.oauth2.server.resource.introspection.OpaqueTokenIntrospector;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
  * Resource service configuration file.<br>
@@ -68,7 +70,8 @@ public class SecurityConfig {
 
   @Autowired private JwtDecoder jwtDecoder;
 
-  @Autowired private AuthzTokenIntrospector authzTokenIntrospector;
+  @Autowired private AuthZUserTokenIntrospector authzUserTokenIntrospector;
+  @Autowired private AuthZServiceTokenAuthenticationFilter authZServiceTokenAuthenticationFilter;
 
   @Autowired private SwaggerConfig swaggerConfig;
 
@@ -101,6 +104,11 @@ public class SecurityConfig {
         .oauth2ResourceServer(
             oauth2 -> oauth2.authenticationManagerResolver(tokenAuthenticationManagerResolver()));
 
+    if (provider.equals("pcglauthz")) {
+      http.addFilterBefore(
+          authZServiceTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+    }
+
     return http.build();
   }
 
@@ -110,7 +118,7 @@ public class SecurityConfig {
     // PCGL AuthZ Provider:
     if (provider.equals("pcglauthz")) {
       return (request) ->
-          new ProviderManager(new OpaqueTokenAuthenticationProvider(authzTokenIntrospector));
+          new ProviderManager(new OpaqueTokenAuthenticationProvider(authzUserTokenIntrospector));
     }
 
     // Non PCGL Authz Provider:

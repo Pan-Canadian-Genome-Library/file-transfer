@@ -1,5 +1,9 @@
 # Overview
 
+> [!Important]
+> 
+> The `/docs` folder contains a copy of the documentation forked from the parent Score repository. Browse through this documentation for details on configuring and working with Score without the PCGL modifications. For details on the changes made to Score for PCGL File-Transfer see the contents of the [`/pcgl-docs`](../pcgl-docs) directory.  
+
 Score is a file transfer service designed to enable large-file upload and download, providign a robust API for secure file transfer and storage operations. It serves as an intermediary between object storage systems and user authorization mechanisms, using pre-signed URLs for efficient and protected data access.
 
 ## System Architecture

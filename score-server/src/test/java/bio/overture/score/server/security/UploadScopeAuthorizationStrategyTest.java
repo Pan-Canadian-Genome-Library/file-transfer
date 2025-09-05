@@ -23,13 +23,13 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 
-import bio.overture.score.server.auth.AuthZAuthorizationService;
 import bio.overture.score.server.config.SecurityConfig;
 import bio.overture.score.server.exception.NotRetryableException;
 import bio.overture.score.server.metadata.MetadataEntity;
 import bio.overture.score.server.metadata.MetadataService;
 import bio.overture.score.server.repository.DownloadService;
 import bio.overture.score.server.repository.UploadService;
+import bio.overture.score.server.security.authz.AuthZAuthorizationService;
 import bio.overture.score.server.security.scope.UploadScopeAuthorizationStrategy;
 import bio.overture.score.server.utils.JWTGenerator;
 import bio.overture.score.server.utils.JwtContext;

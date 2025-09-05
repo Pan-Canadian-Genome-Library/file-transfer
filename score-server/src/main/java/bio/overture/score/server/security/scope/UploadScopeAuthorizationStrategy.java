@@ -16,10 +16,11 @@
  */
 package bio.overture.score.server.security.scope;
 
-import bio.overture.score.server.auth.AuthZAuthorizationService;
-import bio.overture.score.server.auth.AuthzTokenIntrospector;
 import bio.overture.score.server.metadata.MetadataService;
 import bio.overture.score.server.repository.auth.KeycloakAuthorizationService;
+import bio.overture.score.server.security.authz.AuthZAuthorizationService;
+import bio.overture.score.server.security.authz.AuthZServiceTokenAuthentication;
+import bio.overture.score.server.security.authz.AuthZUserTokenIntrospector;
 import java.util.Set;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
@@ -46,13 +47,18 @@ public class UploadScopeAuthorizationStrategy extends AbstractScopeAuthorization
 
     // PCGL AuthZ
     if ("pcglauthz".equalsIgnoreCase(this.getProvider())) {
+      if (authentication instanceof AuthZServiceTokenAuthentication) {
+        // Verified service token. Services have read access but not write access.
+        return false;
+      }
+
       String studyId = fetchStudyId(objectId);
 
       if (studyId == null) {
         log.warn("No study found for objectId {}", objectId);
         return false;
       }
-      val claims = AuthzTokenIntrospector.extractClaimsFromAuthentication(authentication);
+      val claims = AuthZUserTokenIntrospector.extractClaimsFromAuthentication(authentication);
       return claims.isPresent()
           ? authZAuthorizationService.canEditStudy(claims.get(), studyId)
           : false;

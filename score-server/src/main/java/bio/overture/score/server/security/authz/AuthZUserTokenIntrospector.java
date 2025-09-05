@@ -1,12 +1,13 @@
-package bio.overture.score.server.auth;
+package bio.overture.score.server.security.authz;
 
+import bio.overture.score.server.config.PCGLAuthZConfig;
+import bio.overture.score.server.security.authz.dto.AuthZUserDetailsResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -25,19 +26,23 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 @Slf4j
 @Component
-@Profile("secure")
-public class AuthzTokenIntrospector implements OpaqueTokenIntrospector {
+@Profile("pcglauthz")
+public class AuthZUserTokenIntrospector implements OpaqueTokenIntrospector {
 
   private final RestTemplate restTemplate = new RestTemplate();
 
-  @Value("${authz.host}")
-  private String authzHost;
+  private final PCGLAuthZConfig pcglAuthZConfig;
+
+  public AuthZUserTokenIntrospector(final PCGLAuthZConfig config) {
+    this.pcglAuthZConfig = config;
+  }
 
   @Override
   public OAuth2AuthenticatedPrincipal introspect(String token)
       throws OAuth2AuthenticationException {
 
-    String url = UriComponentsBuilder.fromHttpUrl(authzHost).path("/user/me").toUriString();
+    String url =
+        UriComponentsBuilder.fromHttpUrl(pcglAuthZConfig.getHost()).path("/user/me").toUriString();
 
     HttpHeaders headers = new HttpHeaders();
     headers.setBearerAuth(token);
@@ -45,12 +50,12 @@ public class AuthzTokenIntrospector implements OpaqueTokenIntrospector {
     HttpEntity<Void> request = new HttpEntity<>(headers);
 
     try {
-      ResponseEntity<AuthZUserResponse> response =
-          restTemplate.exchange(url, HttpMethod.GET, request, AuthZUserResponse.class);
+      ResponseEntity<AuthZUserDetailsResponse> response =
+          restTemplate.exchange(url, HttpMethod.GET, request, AuthZUserDetailsResponse.class);
 
-      AuthZUserResponse userDetails = response.getBody();
+      AuthZUserDetailsResponse userDetails = response.getBody();
 
-      AuthZClaims claims = convertUserResponseToClaims(userDetails);
+      AuthZUserClaims claims = convertUserResponseToClaims(userDetails);
 
       Map<String, Object> claimsMap = Map.of("authzClaims", claims);
       return new OAuth2IntrospectionAuthenticatedPrincipal(
@@ -62,7 +67,14 @@ public class AuthzTokenIntrospector implements OpaqueTokenIntrospector {
     }
   }
 
-  public static Optional<AuthZClaims> extractClaimsFromAuthentication(
+  /**
+   * Static method to standardize process of safely extracting AuthZClaims from an Authentication
+   * object.
+   *
+   * @param authentication The authentication object returned from an
+   *     OpaqueTokenIntrospector::introspect method.
+   */
+  public static Optional<AuthZUserClaims> extractClaimsFromAuthentication(
       Authentication authentication) {
     val principal = authentication.getPrincipal();
     if (!(principal instanceof OAuth2AuthenticatedPrincipal)) {
@@ -70,21 +82,21 @@ public class AuthzTokenIntrospector implements OpaqueTokenIntrospector {
     }
     val claims = ((OAuth2AuthenticatedPrincipal) principal).getAttribute("authzClaims");
 
-    if (!(claims instanceof AuthZClaims)) {
+    if (!(claims instanceof AuthZUserClaims)) {
       return Optional.empty();
     }
 
-    return Optional.of((AuthZClaims) claims);
+    return Optional.of((AuthZUserClaims) claims);
   }
 
-  private AuthZClaims convertUserResponseToClaims(AuthZUserResponse userResponse) {
+  private AuthZUserClaims convertUserResponseToClaims(AuthZUserDetailsResponse userResponse) {
 
     List<String> groupNames =
         userResponse.getGroups().stream()
-            .map(group -> group.getName())
+            .map(AuthZUserDetailsResponse.Group::getName)
             .collect(Collectors.toList());
 
-    return AuthZClaims.builder()
+    return AuthZUserClaims.builder()
         .sub(userResponse.getUserinfo().getPcgl_id())
         .editableStudies(userResponse.getStudy_authorizations().getEditable_studies())
         .readableStudies(userResponse.getStudy_authorizations().getReadable_studies())
