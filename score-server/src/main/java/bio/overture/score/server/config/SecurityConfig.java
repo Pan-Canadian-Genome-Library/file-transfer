@@ -83,27 +83,17 @@ public class SecurityConfig {
     http.authorizeHttpRequests(
             authorize ->
                 authorize
-                    .antMatchers("/isAlive")
+                    .antMatchers("/actuator/health")
                     .permitAll()
-                    .antMatchers("/studies/**")
+                    .antMatchers("/profile")
                     .permitAll()
-                    .antMatchers("/upload/**")
-                    .permitAll()
-                    .antMatchers("/entities/**")
-                    .permitAll()
-                    .antMatchers("/export/**")
-                    .permitAll()
-                    .antMatchers("/schemas/**")
-                    .permitAll()
-                    .antMatchers()
+                    .antMatchers("/download/ping")
                     .permitAll()
                     .antMatchers(
                         swaggerConfig.getAlternateSwaggerUrl(),
                         "/swagger**",
-                        "/swagger-ui.html",
-                        "/swagger-ui**",
                         "/swagger-resources/**",
-                        "/v2/api-docs/**",
+                        "/v2/api**",
                         "/webjars/**")
                     .permitAll()
                     .anyRequest()
