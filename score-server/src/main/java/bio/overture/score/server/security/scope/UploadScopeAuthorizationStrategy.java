@@ -21,7 +21,6 @@ import bio.overture.score.server.repository.auth.KeycloakAuthorizationService;
 import bio.overture.score.server.security.authz.AuthZAuthorizationService;
 import bio.overture.score.server.security.authz.AuthZServiceTokenAuthentication;
 import bio.overture.score.server.security.authz.AuthZUserTokenAuthentication;
-import bio.overture.score.server.security.authz.AuthZUserTokenIntrospector;
 import java.util.Set;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;

@@ -12,7 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -22,7 +21,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Profile("pcglauthz")
 public class AuthZAuthenticationFilter extends OncePerRequestFilter {
 
-  @Autowired private AuthZAuthorizationService authZAuthorizationService;
+  @Autowired private AuthZRestClient authZRestClient;
 
   @Override
   protected void doFilterInternal(
@@ -47,10 +46,10 @@ public class AuthZAuthenticationFilter extends OncePerRequestFilter {
         return;
       }
     } else if (authorizationHeader != null) {
-        if (!authorizationHeader.startsWith("Bearer ")) {
-            resolveUnauthorized(response);
-            return;
-        }
+      if (!authorizationHeader.startsWith("Bearer ")) {
+        resolveUnauthorized(response);
+        return;
+      }
 
       String bearerToken = authorizationHeader.substring(7);
       val userTokenAuthentication = getUserTokenAuthentication(bearerToken);
@@ -62,7 +61,7 @@ public class AuthZAuthenticationFilter extends OncePerRequestFilter {
         return;
       }
     } else {
-        // No auth information provided
+      // No auth information provided
       SecurityContextHolder.clearContext();
     }
 
@@ -77,7 +76,7 @@ public class AuthZAuthenticationFilter extends OncePerRequestFilter {
       String authorizationHeader) {
     try {
       Optional<AuthZUserClaims> verifyResponse =
-          authZAuthorizationService.verifyUserToken(authorizationHeader);
+          authZRestClient.verifyUserToken(authorizationHeader);
       if (verifyResponse.isPresent()) {
         val claims = verifyResponse.get();
         val authentication =
@@ -95,7 +94,7 @@ public class AuthZAuthenticationFilter extends OncePerRequestFilter {
   private Optional<AuthZServiceTokenAuthentication> getServiceTokenAuthentication(
       AuthZServiceTokenCredentials credentials) {
     try {
-      boolean isVerified = authZAuthorizationService.verifyServiceToken(credentials);
+      boolean isVerified = authZRestClient.verifyServiceToken(credentials);
       if (isVerified) {
         final AuthZServiceTokenAuthentication authentication =
             new AuthZServiceTokenAuthentication(credentials, Collections.emptyList());

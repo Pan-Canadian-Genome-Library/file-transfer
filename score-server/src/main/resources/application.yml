@@ -261,10 +261,10 @@ auth:
   server:
     provider: pcglauthz
     authz:
-      host: https://auth.dev.pcgl.sd4h.ca/authz
-      admin-group: "PCGL:data-admin"
-      service-name: FILE-MANAGER
-      service-token: hsv.something
+      host: https://authz.example.com
+      admin-group: "PCGL:admin-group-name"
+      service-id: SERVICE-LABEL
+      service-uuid: 00000000-0000-0000-0000-0000000000000
 ---
   
 ###############################################################################

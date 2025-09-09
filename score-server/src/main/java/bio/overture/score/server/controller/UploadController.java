@@ -27,8 +27,6 @@ import java.io.IOException;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import javax.servlet.http.HttpServletRequest;
-
-import io.swagger.annotations.AuthorizationScope;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -54,138 +52,137 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class UploadController {
 
-	@Autowired
-	UploadService uploadService;
+  @Autowired UploadService uploadService;
 
-	@ProjectCodeScoped
-	@RequestMapping(method = RequestMethod.POST, value = "/{object-id}/uploads")
-	public @ResponseBody ObjectSpecification initializeMultipartUpload(
-			@PathVariable(value = "object-id") String objectId,
-			@RequestParam(value = "overwrite", required = false, defaultValue = "false") boolean overwrite,
-			@RequestParam(value = "fileSize", required = true) long fileSize,
-			@RequestParam(value = "md5", required = false) String md5,
-			HttpServletRequest request) {
+  @ProjectCodeScoped
+  @RequestMapping(method = RequestMethod.POST, value = "/{object-id}/uploads")
+  public @ResponseBody ObjectSpecification initializeMultipartUpload(
+      @PathVariable(value = "object-id") String objectId,
+      @RequestParam(value = "overwrite", required = false, defaultValue = "false")
+          boolean overwrite,
+      @RequestParam(value = "fileSize", required = true) long fileSize,
+      @RequestParam(value = "md5", required = false) String md5,
+      HttpServletRequest request) {
 
-		log.info("Request received from client {}", request.getHeader(HttpHeaders.USER_AGENT));
-		val ipAddress = HttpServletRequests.getIpAddress(request);
+    log.info("Request received from client {}", request.getHeader(HttpHeaders.USER_AGENT));
+    val ipAddress = HttpServletRequests.getIpAddress(request);
 
-		log.info(
-				"Initiating upload of object id {} with access token {} (MD5) having size of {} from {} using client version {}",
-				objectId,
-				hashToken(request.getHeader(HttpHeaders.AUTHORIZATION)),
-				Long.toString(fileSize),
-				ipAddress,
-				request.getHeader(HttpHeaders.USER_AGENT));
-		return uploadService.initiateUpload(objectId, fileSize, md5, overwrite);
-	}
+    log.info(
+        "Initiating upload of object id {} with access token {} (MD5) having size of {} from {} using client version {}",
+        objectId,
+        hashToken(request.getHeader(HttpHeaders.AUTHORIZATION)),
+        Long.toString(fileSize),
+        ipAddress,
+        request.getHeader(HttpHeaders.USER_AGENT));
+    return uploadService.initiateUpload(objectId, fileSize, md5, overwrite);
+  }
 
-	@ProjectCodeScoped
-	@RequestMapping(method = RequestMethod.DELETE, value = "/{object-id}/parts")
-	@ResponseStatus(value = HttpStatus.OK)
-	public void deletePart(
-			@PathVariable(value = "object-id") String objectId,
-			@RequestParam(value = "partNumber", required = true) int partNumber,
-			@RequestParam(value = "uploadId", required = true) String uploadId,
-			HttpServletRequest request) {
+  @ProjectCodeScoped
+  @RequestMapping(method = RequestMethod.DELETE, value = "/{object-id}/parts")
+  @ResponseStatus(value = HttpStatus.OK)
+  public void deletePart(
+      @PathVariable(value = "object-id") String objectId,
+      @RequestParam(value = "partNumber", required = true) int partNumber,
+      @RequestParam(value = "uploadId", required = true) String uploadId,
+      HttpServletRequest request) {
 
-		val ipAddress = HttpServletRequests.getIpAddress(request);
+    val ipAddress = HttpServletRequests.getIpAddress(request);
 
-		log.info(
-				"Initiating delete of object id {} part# {} (upload id {}); with access token {} from {} using client version {}",
-				objectId,
-				partNumber,
-				uploadId,
-				hashToken(request.getHeader(HttpHeaders.AUTHORIZATION)),
-				ipAddress,
-				request.getHeader(HttpHeaders.USER_AGENT));
-		uploadService.deletePart(objectId, uploadId, partNumber);
-	}
+    log.info(
+        "Initiating delete of object id {} part# {} (upload id {}); with access token {} from {} using client version {}",
+        objectId,
+        partNumber,
+        uploadId,
+        hashToken(request.getHeader(HttpHeaders.AUTHORIZATION)),
+        ipAddress,
+        request.getHeader(HttpHeaders.USER_AGENT));
+    uploadService.deletePart(objectId, uploadId, partNumber);
+  }
 
-	@ProjectCodeScoped
-	@RequestMapping(method = RequestMethod.POST, value = "/{object-id}/parts")
-	@ResponseStatus(value = HttpStatus.OK)
-	public void finalizePartUpload(
-			@PathVariable(value = "object-id") String objectId,
-			@RequestParam(value = "partNumber", required = true) int partNumber,
-			@RequestParam(value = "uploadId", required = true) String uploadId,
-			@RequestParam(value = "md5", required = true) String md5,
-			@RequestParam(value = "etag", required = true) String eTag) {
-		uploadService.finalizeUploadPart(objectId, uploadId, partNumber, md5, eTag);
-	}
+  @ProjectCodeScoped
+  @RequestMapping(method = RequestMethod.POST, value = "/{object-id}/parts")
+  @ResponseStatus(value = HttpStatus.OK)
+  public void finalizePartUpload(
+      @PathVariable(value = "object-id") String objectId,
+      @RequestParam(value = "partNumber", required = true) int partNumber,
+      @RequestParam(value = "uploadId", required = true) String uploadId,
+      @RequestParam(value = "md5", required = true) String md5,
+      @RequestParam(value = "etag", required = true) String eTag) {
+    uploadService.finalizeUploadPart(objectId, uploadId, partNumber, md5, eTag);
+  }
 
-	@ProjectCodeScoped
-	@RequestMapping(method = RequestMethod.POST, value = "/{object-id}")
-	@ResponseStatus(value = HttpStatus.OK)
-	public void finalizeUpload(
-			@PathVariable(value = "object-id") String objectId,
-			@RequestParam(value = "uploadId", required = true) String uploadId) {
-		val watch = Stopwatch.createStarted();
-		uploadService.finalizeUpload(objectId, uploadId);
-		log.info("Finalize upload completed in {}", watch);
-	}
+  @ProjectCodeScoped
+  @RequestMapping(method = RequestMethod.POST, value = "/{object-id}")
+  @ResponseStatus(value = HttpStatus.OK)
+  public void finalizeUpload(
+      @PathVariable(value = "object-id") String objectId,
+      @RequestParam(value = "uploadId", required = true) String uploadId) {
+    val watch = Stopwatch.createStarted();
+    uploadService.finalizeUpload(objectId, uploadId);
+    log.info("Finalize upload completed in {}", watch);
+  }
 
-	@ProjectCodeScoped
-	@RequestMapping(method = RequestMethod.POST, value = "/{object-id}/recovery")
-	@ResponseStatus(value = HttpStatus.OK)
-	public void tryRecover(
-			@PathVariable(value = "object-id") String objectId,
-			@RequestParam(value = "fileSize", required = true) long fileSize) {
-		uploadService.recover(objectId, fileSize);
-	}
+  @ProjectCodeScoped
+  @RequestMapping(method = RequestMethod.POST, value = "/{object-id}/recovery")
+  @ResponseStatus(value = HttpStatus.OK)
+  public void tryRecover(
+      @PathVariable(value = "object-id") String objectId,
+      @RequestParam(value = "fileSize", required = true) long fileSize) {
+    uploadService.recover(objectId, fileSize);
+  }
 
-	@ProjectCodeScoped
-	@RequestMapping(method = RequestMethod.GET, value = "/{object-id}/status")
-	public @ResponseBody UploadProgress getUploadProgress(
-			@PathVariable(value = "object-id") String objectId,
-			@RequestParam(value = "fileSize", required = true) long fileSize) {
-		// TODO: if object id/upload id does not exist, throw not found exception
-		return uploadService.getUploadStatus(objectId, uploadService.getUploadId(objectId), fileSize);
-	}
+  @ProjectCodeScoped
+  @RequestMapping(method = RequestMethod.GET, value = "/{object-id}/status")
+  public @ResponseBody UploadProgress getUploadProgress(
+      @PathVariable(value = "object-id") String objectId,
+      @RequestParam(value = "fileSize", required = true) long fileSize) {
+    // TODO: if object id/upload id does not exist, throw not found exception
+    return uploadService.getUploadStatus(objectId, uploadService.getUploadId(objectId), fileSize);
+  }
 
-	@ProjectCodeScoped
-	@RequestMapping(method = RequestMethod.GET, value = "/{object-id}")
-	public @ResponseBody Boolean isObjectExist(@PathVariable("object-id") String objectId) {
-		return uploadService.exists(objectId);
-	}
+  @ProjectCodeScoped
+  @RequestMapping(method = RequestMethod.GET, value = "/{object-id}")
+  public @ResponseBody Boolean isObjectExist(@PathVariable("object-id") String objectId) {
+    return uploadService.exists(objectId);
+  }
 
-	@ProjectCodeScoped
-	@RequestMapping(method = RequestMethod.DELETE, value = "/{object-id}")
-	@ResponseStatus(value = HttpStatus.OK)
-	public void cancelUpload(@PathVariable("object-id") String objectId) {
-		uploadService.cancelUpload(objectId, uploadService.getUploadId(objectId));
-	}
+  @ProjectCodeScoped
+  @RequestMapping(method = RequestMethod.DELETE, value = "/{object-id}")
+  @ResponseStatus(value = HttpStatus.OK)
+  public void cancelUpload(@PathVariable("object-id") String objectId) {
+    uploadService.cancelUpload(objectId, uploadService.getUploadId(objectId));
+  }
 
-	@ProjectCodeScoped
-	@RequestMapping(method = RequestMethod.POST, value = "/cancel")
-	@ResponseStatus(value = HttpStatus.OK)
-	public void cancelAll() throws IOException {
-		uploadService.cancelUploads();
-	}
+  @ProjectCodeScoped
+  @RequestMapping(method = RequestMethod.POST, value = "/cancel")
+  @ResponseStatus(value = HttpStatus.OK)
+  public void cancelAll() throws IOException {
+    uploadService.cancelUploads();
+  }
 
-	/**
-	 * Exception handler specific to the Spring Security processing in this controller
-	 *
-	 * @return Error if Spring Security policies are violated
-	 */
-	@ExceptionHandler({ AccessDeniedException.class })
-	public ResponseEntity<Object> handleAccessDeniedException(
-			HttpServletRequest req, AccessDeniedException ex) {
-		return new ResponseEntity<Object>(
-				"Token missing required scope to update project", new HttpHeaders(), HttpStatus.FORBIDDEN);
-	}
+  /**
+   * Exception handler specific to the Spring Security processing in this controller
+   *
+   * @return Error if Spring Security policies are violated
+   */
+  @ExceptionHandler({AccessDeniedException.class})
+  public ResponseEntity<Object> handleAccessDeniedException(
+      HttpServletRequest req, AccessDeniedException ex) {
+    return new ResponseEntity<Object>(
+        "Token missing required scope to update project", new HttpHeaders(), HttpStatus.FORBIDDEN);
+  }
 
-	/** Method Security Meta Annotation */
-	@Retention(RetentionPolicy.RUNTIME)
-	@PreAuthorize("@projectSecurity.authorize(authentication,#objectId)")
-	public @interface ProjectCodeScoped {
-	}
+  /** Method Security Meta Annotation */
+  @Retention(RetentionPolicy.RUNTIME)
+  @PreAuthorize("@projectSecurity.authorize(authentication,#objectId)")
+  public @interface ProjectCodeScoped {}
 
-	/** Logging helper */
-	protected String hashToken(String accessToken) {
-		String identifier = "<none>";
-		if ((accessToken != null) && (!accessToken.isEmpty())) {
-			identifier = TokenHasher.hashToken(accessToken);
-		}
-		return identifier;
-	}
+  /** Logging helper */
+  protected String hashToken(String accessToken) {
+    String identifier = "<none>";
+    if ((accessToken != null) && (!accessToken.isEmpty())) {
+      identifier = TokenHasher.hashToken(accessToken);
+    }
+    return identifier;
+  }
 }

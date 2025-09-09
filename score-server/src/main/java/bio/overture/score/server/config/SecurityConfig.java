@@ -59,125 +59,123 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationFi
 @ConfigurationProperties("auth.server")
 public class SecurityConfig {
 
-	private String url;
-	private String clientId;
-	private String clientSecret;
-	private String provider;
-	private String tokenName;
+  private String url;
+  private String clientId;
+  private String clientSecret;
+  private String provider;
+  private String tokenName;
 
-	private final ScopeProperties scopeProperties;
+  private final ScopeProperties scopeProperties;
 
-	@Autowired
-	private JwtDecoder jwtDecoder;
+  @Autowired private JwtDecoder jwtDecoder;
 
-	// @Autowired private AuthZAuthorizationService authZAuthorizationService;
-	// @Autowired private AuthZUserTokenIntrospector authzUserTokenIntrospector;
-	@Autowired
-	private AuthZAuthenticationFilter authZAuthenticationFilter;
-	//
-	@Autowired
-	private SwaggerConfig swaggerConfig;
+  // @Autowired private AuthZAuthorizationService authZAuthorizationService;
+  // @Autowired private AuthZUserTokenIntrospector authzUserTokenIntrospector;
+  @Autowired private AuthZAuthenticationFilter authZAuthenticationFilter;
+  //
+  @Autowired private SwaggerConfig swaggerConfig;
 
-	@Autowired
-	public SecurityConfig(@NonNull ScopeProperties scopeProperties) {
-		this.scopeProperties = scopeProperties;
-	}
+  @Autowired
+  public SecurityConfig(@NonNull ScopeProperties scopeProperties) {
+    this.scopeProperties = scopeProperties;
+  }
 
-	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		http.csrf().disable();
-		http.authorizeHttpRequests(
-				authorize -> authorize
-						.antMatchers("/actuator/health")
-						.permitAll()
-						.antMatchers("/profile")
-						.permitAll()
-						.antMatchers("/download/ping")
-						.permitAll()
-						.antMatchers(
-								swaggerConfig.getAlternateSwaggerUrl(),
-								"/swagger**",
-								"/swagger-resources/**",
-								"/v2/api**",
-								"/webjars/**")
-						.permitAll()
-						.anyRequest()
-						.authenticated())
-				.addFilterBefore(authZAuthenticationFilter, BasicAuthenticationFilter.class);
+  @Bean
+  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http.csrf().disable();
+    http.authorizeHttpRequests(
+            authorize ->
+                authorize
+                    .antMatchers("/actuator/health")
+                    .permitAll()
+                    .antMatchers("/profile")
+                    .permitAll()
+                    .antMatchers("/download/ping")
+                    .permitAll()
+                    .antMatchers(
+                        swaggerConfig.getAlternateSwaggerUrl(),
+                        "/swagger**",
+                        "/swagger-resources/**",
+                        "/v2/api**",
+                        "/webjars/**")
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated())
+        .addFilterBefore(authZAuthenticationFilter, BasicAuthenticationFilter.class);
 
-		if (provider.equals("pcglauthz")) {
-			// http.addFilterBefore(authZAuthenticationFilter, BasicAuthenticationFilter.class);
-		} else {
-			// Score built in auth handling for non-authz providers.
-			// This is kept to keep support for upstream code, but will be unused in PCGL.
-			// If this is left in the security chain, then any request without the Authorization token
-			// will throw an error,
-			// and that conflicts with our handling of requests identified by service tokens.
-			http.oauth2ResourceServer(
-					oauth2 -> oauth2.authenticationManagerResolver(tokenAuthenticationManagerResolver()));
-		}
+    if (provider.equals("pcglauthz")) {
+      http.addFilterBefore(authZAuthenticationFilter, BasicAuthenticationFilter.class);
+    } else {
+      // Score built in auth handling for non-authz providers.
+      // This is kept to keep support for upstream code, but will be unused in PCGL.
+      // If this is left in the security chain, then any request without the Authorization token
+      // will throw an error,
+      // and that conflicts with our handling of requests identified by service tokens.
+      http.oauth2ResourceServer(
+          oauth2 -> oauth2.authenticationManagerResolver(tokenAuthenticationManagerResolver()));
+    }
 
-		return http.build();
-	}
+    return http.build();
+  }
 
-	@Bean
-	public AuthenticationManagerResolver<HttpServletRequest> tokenAuthenticationManagerResolver() {
+  @Bean
+  public AuthenticationManagerResolver<HttpServletRequest> tokenAuthenticationManagerResolver() {
 
-		AuthenticationManager jwt = new ProviderManager(new JwtAuthenticationProvider(jwtDecoder));
-		AuthenticationManager opaqueToken =
-				new ProviderManager(
-						new OpaqueTokenAuthenticationProvider(
-								new ApiKeyIntrospector(url, clientId, clientSecret, tokenName)));
+    AuthenticationManager jwt = new ProviderManager(new JwtAuthenticationProvider(jwtDecoder));
+    AuthenticationManager opaqueToken =
+        new ProviderManager(
+            new OpaqueTokenAuthenticationProvider(
+                new ApiKeyIntrospector(url, clientId, clientSecret, tokenName)));
 
-		return (request) -> useJwt(request) ? jwt : opaqueToken;
-	}
+    return (request) -> useJwt(request) ? jwt : opaqueToken;
+  }
 
-	@Bean
-	public UploadScopeAuthorizationStrategy projectSecurity(
-			@Autowired MetadataService metadataService) {
+  @Bean
+  public UploadScopeAuthorizationStrategy projectSecurity(
+      @Autowired MetadataService metadataService) {
 
-		return new UploadScopeAuthorizationStrategy(
-				scopeProperties.getUpload().getStudy().getPrefix(),
-				scopeProperties.getUpload().getStudy().getSuffix(),
-				scopeProperties.getUpload().getSystem(),
-				metadataService,
-				provider);
-	}
+    return new UploadScopeAuthorizationStrategy(
+        scopeProperties.getUpload().getStudy().getPrefix(),
+        scopeProperties.getUpload().getStudy().getSuffix(),
+        scopeProperties.getUpload().getSystem(),
+        metadataService,
+        provider);
+  }
 
-	@Bean
-	@Scope("prototype")
-	public DownloadScopeAuthorizationStrategy accessSecurity(
-			@Autowired MetadataService metadataService) {
-		return new DownloadScopeAuthorizationStrategy(
-				scopeProperties.getDownload().getStudy().getPrefix(),
-				scopeProperties.getDownload().getStudy().getSuffix(),
-				scopeProperties.getDownload().getSystem(),
-				metadataService,
-				provider);
-	}
+  @Bean
+  @Scope("prototype")
+  public DownloadScopeAuthorizationStrategy accessSecurity(
+      @Autowired MetadataService metadataService) {
+    return new DownloadScopeAuthorizationStrategy(
+        scopeProperties.getDownload().getStudy().getPrefix(),
+        scopeProperties.getDownload().getStudy().getSuffix(),
+        scopeProperties.getDownload().getSystem(),
+        metadataService,
+        provider);
+  }
 
-	public ScopeProperties getScopeProperties() {
-		return this.scopeProperties;
-	}
+  public ScopeProperties getScopeProperties() {
+    return this.scopeProperties;
+  }
 
-	@Bean
-	public OpaqueTokenIntrospector introspector() {
-		return new ApiKeyIntrospector(url, clientId, clientSecret, tokenName);
-	}
+  @Bean
+  public OpaqueTokenIntrospector introspector() {
+    return new ApiKeyIntrospector(url, clientId, clientSecret, tokenName);
+  }
 
-	private boolean useJwt(HttpServletRequest request) {
-		val authorizationHeaderValue = request.getHeader(HttpHeaders.AUTHORIZATION);
-		if (authorizationHeaderValue != null && authorizationHeaderValue.startsWith("Bearer")) {
-			String token = authorizationHeaderValue.substring(7);
-			try {
-				UUID.fromString(token);
-				// able to parse as UUID, so this token matches our EgoApiKey format
-				return false;
-			} catch (IllegalArgumentException e) {
-				// unable to parse as UUID, use our JWT resolvers
-				return true;
-			}
-		}
-		return true;
-	}
+  private boolean useJwt(HttpServletRequest request) {
+    val authorizationHeaderValue = request.getHeader(HttpHeaders.AUTHORIZATION);
+    if (authorizationHeaderValue != null && authorizationHeaderValue.startsWith("Bearer")) {
+      String token = authorizationHeaderValue.substring(7);
+      try {
+        UUID.fromString(token);
+        // able to parse as UUID, so this token matches our EgoApiKey format
+        return false;
+      } catch (IllegalArgumentException e) {
+        // unable to parse as UUID, use our JWT resolvers
+        return true;
+      }
+    }
+    return true;
+  }
 }

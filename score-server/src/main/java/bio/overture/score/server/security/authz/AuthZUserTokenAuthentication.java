@@ -1,7 +1,6 @@
 package bio.overture.score.server.security.authz;
 
 import java.util.Collection;
-
 import lombok.Getter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
@@ -10,8 +9,7 @@ public class AuthZUserTokenAuthentication extends AbstractAuthenticationToken {
 
   private final String bearerToken;
 
-  @Getter
-  private final AuthZUserClaims userClaims;
+  @Getter private final AuthZUserClaims userClaims;
 
   public AuthZUserTokenAuthentication(
       String bearerToken, AuthZUserClaims userClaims, Collection<GrantedAuthority> authorities) {
@@ -37,5 +35,4 @@ public class AuthZUserTokenAuthentication extends AbstractAuthenticationToken {
   public Object getPrincipal() {
     return this.userClaims;
   }
-
 }
