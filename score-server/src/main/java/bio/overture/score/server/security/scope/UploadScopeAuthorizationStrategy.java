@@ -20,6 +20,7 @@ import bio.overture.score.server.metadata.MetadataService;
 import bio.overture.score.server.repository.auth.KeycloakAuthorizationService;
 import bio.overture.score.server.security.authz.AuthZAuthorizationService;
 import bio.overture.score.server.security.authz.AuthZServiceTokenAuthentication;
+import bio.overture.score.server.security.authz.AuthZUserTokenAuthentication;
 import bio.overture.score.server.security.authz.AuthZUserTokenIntrospector;
 import java.util.Set;
 import lombok.*;
@@ -49,19 +50,24 @@ public class UploadScopeAuthorizationStrategy extends AbstractScopeAuthorization
     if ("pcglauthz".equalsIgnoreCase(this.getProvider())) {
       if (authentication instanceof AuthZServiceTokenAuthentication) {
         // Verified service token. Services have read access but not write access.
-        return false;
+        return true;
+      }
+      if (authentication instanceof AuthZUserTokenAuthentication) {
+
+        String studyId = fetchStudyId(objectId);
+
+        if (studyId == null) {
+          log.warn("No study found for objectId {}", objectId);
+          return false;
+        }
+        val claims = ((AuthZUserTokenAuthentication) authentication).getUserClaims();
+        return authZAuthorizationService.canEditStudy(claims, studyId);
       }
 
-      String studyId = fetchStudyId(objectId);
-
-      if (studyId == null) {
-        log.warn("No study found for objectId {}", objectId);
-        return false;
-      }
-      val claims = AuthZUserTokenIntrospector.extractClaimsFromAuthentication(authentication);
-      return claims.isPresent()
-          ? authZAuthorizationService.canEditStudy(claims.get(), studyId)
-          : false;
+      // Fallthrough case for if something unexpected happened and none of the above handlers caught
+      // the auth
+      // Deny access to protected resource if we don't see specific Authentication
+      return false;
     }
 
     // Provider is not PCGL AuthZ:

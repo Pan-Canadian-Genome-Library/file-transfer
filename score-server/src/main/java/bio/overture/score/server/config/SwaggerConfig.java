@@ -32,97 +32,98 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 @Configuration
 public class SwaggerConfig {
 
-  @Value("${server.version:1.0}")
-  private String serverVersion;
+	@Value("${server.version:1.0}")
+	private String serverVersion;
 
-  @Value("${swagger.alternateUrl:/swagger}")
-  @Getter
-  private String alternateSwaggerUrl;
+	@Value("${swagger.alternateUrl:/swagger}")
+	@Getter
+	private String alternateSwaggerUrl;
 
-  // default is empty
-  @Value("${swagger.host:}")
-  private String swaggerHost;
+	// default is empty
+	@Value("${swagger.host:}")
+	private String swaggerHost;
 
-  // default is empty
-  @Value("${swagger.basePath:}")
-  private String basePath;
+	// default is empty
+	@Value("${swagger.basePath:}")
+	private String basePath;
 
-  @Bean
-  public Docket api() {
-    return new Docket(DocumentationType.SWAGGER_2)
-        .apiInfo(apiInfo())
-        .select()
-        .apis(basePackage("bio.overture.score.server.controller"))
-        .build()
-        .host(swaggerHost)
-        .pathProvider(
-            new RelativePathProvider(null) {
-              @Override
-              public String getApplicationBasePath() {
-                return basePath;
-              }
-            })
-        .securitySchemes(securitySchemes())
-        .securityContexts(Collections.singletonList(securityContext()));
-  }
+	@Bean
+	public Docket api() {
+		return new Docket(DocumentationType.SWAGGER_2)
+				.apiInfo(apiInfo())
+				.select()
+				.apis(basePackage("bio.overture.score.server.controller"))
+				.build()
+				.host(swaggerHost)
+				.pathProvider(
+						new RelativePathProvider(null) {
 
-  private ApiInfo apiInfo() {
-    return new ApiInfoBuilder()
-        .title("Score API")
-        .description("Score API reference for developers.")
-        .version(serverVersion)
-        .build();
-  }
+							@Override
+							public String getApplicationBasePath() {
+								return basePath;
+							}
+						})
+				.securitySchemes(securitySchemes())
+				.securityContexts(Collections.singletonList(securityContext()));
+	}
 
-  private static ArrayList<? extends SecurityScheme> securitySchemes() {
-    ArrayList<SecurityScheme> securitySchemes = new ArrayList<>();
-    securitySchemes.add(new ApiKey("Bearer", "Authorization", "header"));
-    return securitySchemes;
-  }
+	private ApiInfo apiInfo() {
+		return new ApiInfoBuilder()
+				.title("Score API")
+				.description("Score API reference for developers.")
+				.version(serverVersion)
+				.build();
+	}
 
-  private SecurityContext securityContext() {
-    return SecurityContext.builder().securityReferences(defaultAuth()).build();
-  }
+	private static ArrayList<? extends SecurityScheme> securitySchemes() {
+		ArrayList<SecurityScheme> securitySchemes = new ArrayList<>();
+		securitySchemes.add(new ApiKey("Bearer", "Authorization", "header"));
+		return securitySchemes;
+	}
 
-  private List<SecurityReference> defaultAuth() {
-    AuthorizationScope authorizationScope = new AuthorizationScope("global", "");
-    AuthorizationScope[] authorizationScopes = new AuthorizationScope[1];
-    authorizationScopes[0] = authorizationScope;
-    return Collections.singletonList(new SecurityReference("Bearer", authorizationScopes));
-  }
+	private SecurityContext securityContext() {
+		return SecurityContext.builder().securityReferences(defaultAuth()).build();
+	}
 
-  @Bean
-  public WebMvcEndpointHandlerMapping webEndpointServletHandlerMapping(
-      WebEndpointsSupplier webEndpointsSupplier,
-      ServletEndpointsSupplier servletEndpointsSupplier,
-      ControllerEndpointsSupplier controllerEndpointsSupplier,
-      EndpointMediaTypes endpointMediaTypes,
-      CorsEndpointProperties corsProperties,
-      WebEndpointProperties webEndpointProperties,
-      Environment environment) {
-    List<ExposableEndpoint<?>> allEndpoints = new ArrayList();
-    Collection<ExposableWebEndpoint> webEndpoints = webEndpointsSupplier.getEndpoints();
-    allEndpoints.addAll(webEndpoints);
-    allEndpoints.addAll(servletEndpointsSupplier.getEndpoints());
-    allEndpoints.addAll(controllerEndpointsSupplier.getEndpoints());
-    String basePath = webEndpointProperties.getBasePath();
-    EndpointMapping endpointMapping = new EndpointMapping(basePath);
-    boolean shouldRegisterLinksMapping =
-        this.shouldRegisterLinksMapping(webEndpointProperties, environment, basePath);
-    return new WebMvcEndpointHandlerMapping(
-        endpointMapping,
-        webEndpoints,
-        endpointMediaTypes,
-        corsProperties.toCorsConfiguration(),
-        new EndpointLinksResolver(allEndpoints, basePath),
-        shouldRegisterLinksMapping,
-        null);
-  }
+	private List<SecurityReference> defaultAuth() {
+		AuthorizationScope authorizationScope = new AuthorizationScope("global", "");
+		AuthorizationScope[] authorizationScopes = new AuthorizationScope[1];
+		authorizationScopes[0] = authorizationScope;
+		return Collections.singletonList(new SecurityReference("Bearer", authorizationScopes));
+	}
 
-  private boolean shouldRegisterLinksMapping(
-      WebEndpointProperties webEndpointProperties, Environment environment, String basePath) {
-    return webEndpointProperties.getDiscovery().isEnabled()
-        && (StringUtils.hasText(basePath)
-            || ManagementPortType.get(environment).equals(ManagementPortType.DIFFERENT));
-  }
+	@Bean
+	public WebMvcEndpointHandlerMapping webEndpointServletHandlerMapping(
+			WebEndpointsSupplier webEndpointsSupplier,
+			ServletEndpointsSupplier servletEndpointsSupplier,
+			ControllerEndpointsSupplier controllerEndpointsSupplier,
+			EndpointMediaTypes endpointMediaTypes,
+			CorsEndpointProperties corsProperties,
+			WebEndpointProperties webEndpointProperties,
+			Environment environment) {
+		List<ExposableEndpoint<?>> allEndpoints = new ArrayList();
+		Collection<ExposableWebEndpoint> webEndpoints = webEndpointsSupplier.getEndpoints();
+		allEndpoints.addAll(webEndpoints);
+		allEndpoints.addAll(servletEndpointsSupplier.getEndpoints());
+		allEndpoints.addAll(controllerEndpointsSupplier.getEndpoints());
+		String basePath = webEndpointProperties.getBasePath();
+		EndpointMapping endpointMapping = new EndpointMapping(basePath);
+		boolean shouldRegisterLinksMapping =
+				this.shouldRegisterLinksMapping(webEndpointProperties, environment, basePath);
+		return new WebMvcEndpointHandlerMapping(
+				endpointMapping,
+				webEndpoints,
+				endpointMediaTypes,
+				corsProperties.toCorsConfiguration(),
+				new EndpointLinksResolver(allEndpoints, basePath),
+				shouldRegisterLinksMapping,
+				null);
+	}
+
+	private boolean shouldRegisterLinksMapping(
+			WebEndpointProperties webEndpointProperties, Environment environment, String basePath) {
+		return webEndpointProperties.getDiscovery().isEnabled()
+				&& (StringUtils.hasText(basePath)
+						|| ManagementPortType.get(environment).equals(ManagementPortType.DIFFERENT));
+	}
 }

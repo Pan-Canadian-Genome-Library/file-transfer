@@ -1,7 +1,9 @@
 package bio.overture.score.server.security.authz.dto;
 
+import bio.overture.score.server.security.authz.AuthZUserClaims;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -53,4 +55,18 @@ public class AuthZUserDetailsResponse {
   private UserInfo userinfo;
   private StudyAuthorizations study_authorizations;
   private List<Group> groups;
+
+  public AuthZUserClaims toClaims() {
+    List<String> groupNames =
+        this.getGroups().stream()
+            .map(AuthZUserDetailsResponse.Group::getName)
+            .collect(Collectors.toList());
+
+    return AuthZUserClaims.builder()
+        .sub(this.getUserinfo().getPcgl_id())
+        .editableStudies(this.getStudy_authorizations().getEditable_studies())
+        .readableStudies(this.getStudy_authorizations().getReadable_studies())
+        .groups(groupNames)
+        .build();
+  }
 }

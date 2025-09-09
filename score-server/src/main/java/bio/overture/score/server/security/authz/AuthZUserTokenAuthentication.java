@@ -1,20 +1,25 @@
 package bio.overture.score.server.security.authz;
 
 import java.util.Collection;
+
+import lombok.Getter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 
-public class AuthZServiceTokenAuthentication extends AbstractAuthenticationToken {
+public class AuthZUserTokenAuthentication extends AbstractAuthenticationToken {
 
-  private final AuthZServiceTokenCredentials credentials;
+  private final String bearerToken;
 
-  public AuthZServiceTokenAuthentication(
-      AuthZServiceTokenCredentials authZServiceTokenCredentials,
-      Collection<GrantedAuthority> authorities) {
+  @Getter
+  private final AuthZUserClaims userClaims;
+
+  public AuthZUserTokenAuthentication(
+      String bearerToken, AuthZUserClaims userClaims, Collection<GrantedAuthority> authorities) {
     super(authorities);
     this.setAuthenticated(true);
 
-    this.credentials = authZServiceTokenCredentials;
+    this.bearerToken = bearerToken;
+    this.userClaims = userClaims;
   }
 
   /**
@@ -22,7 +27,7 @@ public class AuthZServiceTokenAuthentication extends AbstractAuthenticationToken
    */
   @Override
   public Object getCredentials() {
-    return credentials.getServiceToken();
+    return this.bearerToken;
   }
 
   /**
@@ -30,6 +35,7 @@ public class AuthZServiceTokenAuthentication extends AbstractAuthenticationToken
    */
   @Override
   public Object getPrincipal() {
-    return credentials.getServiceId();
+    return this.userClaims;
   }
+
 }

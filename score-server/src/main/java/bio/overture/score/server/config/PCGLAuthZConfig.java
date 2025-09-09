@@ -15,6 +15,6 @@ public class PCGLAuthZConfig {
 
   private String host;
   private String adminGroup;
-  private String serviceId;
+  private String serviceName;
   private String serviceToken;
 }

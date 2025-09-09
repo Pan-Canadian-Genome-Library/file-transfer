@@ -23,6 +23,7 @@ import bio.overture.score.server.repository.auth.KeycloakAuthorizationService;
 import bio.overture.score.server.security.Access;
 import bio.overture.score.server.security.authz.AuthZAuthorizationService;
 import bio.overture.score.server.security.authz.AuthZServiceTokenAuthentication;
+import bio.overture.score.server.security.authz.AuthZUserTokenAuthentication;
 import bio.overture.score.server.security.authz.AuthZUserTokenIntrospector;
 import java.util.Set;
 import lombok.NonNull;
@@ -68,15 +69,24 @@ public class DownloadScopeAuthorizationStrategy extends AbstractScopeAuthorizati
           // Verified service token. Services always have read access.
           return authentication.isAuthenticated();
         }
+        if (authentication instanceof AuthZUserTokenAuthentication) {
 
-        String studyId = fetchStudyId(objectId);
-        if (studyId == null) {
-          log.warn("No study found for objectId {}", objectId);
-          return false;
+          String studyId = fetchStudyId(objectId);
+          if (studyId == null) {
+            log.warn("No study found for objectId {}", objectId);
+            return false;
+          }
+          val claims = AuthZUserTokenIntrospector.extractClaimsFromAuthentication(authentication);
+
+          return claims.isPresent()
+              && authZAuthorizationService.canReadStudy(claims.get(), studyId);
         }
-        val claims = AuthZUserTokenIntrospector.extractClaimsFromAuthentication(authentication);
 
-        return claims.isPresent() && authZAuthorizationService.canReadStudy(claims.get(), studyId);
+        // Fallthrough case for if something unexpected happened and none of the above handlers
+        // caught
+        // the auth
+        // Deny access to protected resource if we don't see specific Authentication
+        return false;
       }
 
       Set<String> grantedScopes = getGrantedScopes(authentication);

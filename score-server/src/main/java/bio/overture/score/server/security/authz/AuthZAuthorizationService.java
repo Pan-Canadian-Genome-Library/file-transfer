@@ -2,6 +2,8 @@ package bio.overture.score.server.security.authz;
 
 import bio.overture.score.server.config.PCGLAuthZConfig;
 import bio.overture.score.server.security.authz.dto.AuthZServiceTokenVerificationResponse;
+import bio.overture.score.server.security.authz.dto.AuthZUserDetailsResponse;
+import java.util.Optional;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
@@ -40,6 +42,25 @@ public class AuthZAuthorizationService {
     val body = response.getBody();
 
     return body != null && body.isResult();
+  }
+
+  public Optional<AuthZUserClaims> verifyUserToken(String token) throws RestClientException {
+    String url =
+        UriComponentsBuilder.fromHttpUrl(pcglAuthZConfig.getHost()).path("/user/me").toUriString();
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.setBearerAuth(token);
+
+    HttpEntity<Void> request = new HttpEntity<>(headers);
+
+    ResponseEntity<AuthZUserDetailsResponse> response =
+        restTemplate.exchange(url, HttpMethod.GET, request, AuthZUserDetailsResponse.class);
+
+    AuthZUserDetailsResponse userDetails = response.getBody();
+    if (userDetails != null) {
+      return Optional.of(userDetails.toClaims());
+    }
+    return Optional.empty();
   }
 
   /**
