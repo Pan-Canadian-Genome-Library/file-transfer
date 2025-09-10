@@ -34,6 +34,10 @@ public class AuthZAuthenticationFilter extends OncePerRequestFilter {
     String authorizationHeader = request.getHeader("Authorization");
 
     if (serviceToken != null && serviceId != null) {
+        // Service Token Headers both have a value.
+        // Treat this request as coming from another service,
+        // using a Service Verification Token to authorize the request.
+
       val credentials = new AuthZServiceTokenCredentials(serviceId, serviceToken);
 
       val serviceTokenAuthentication = getServiceTokenAuthentication(credentials);
@@ -46,6 +50,9 @@ public class AuthZAuthenticationFilter extends OncePerRequestFilter {
         return;
       }
     } else if (authorizationHeader != null) {
+        // Request has an Authorization header.
+        // Treat this request as coming from a user, check for a Bearer token to authorize the request.
+
       if (!authorizationHeader.startsWith("Bearer ")) {
         resolveUnauthorized(response);
         return;

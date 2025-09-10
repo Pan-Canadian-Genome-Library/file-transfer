@@ -48,7 +48,7 @@ public class UploadScopeAuthorizationStrategy extends AbstractScopeAuthorization
     // PCGL AuthZ
     if ("pcglauthz".equalsIgnoreCase(this.getProvider())) {
       if (authentication instanceof AuthZServiceTokenAuthentication) {
-        // Verified service token. Services have read access but not write access.
+        // Verified service token. Services have permission to upload data.
         return true;
       }
       if (authentication instanceof AuthZUserTokenAuthentication) {
@@ -63,9 +63,8 @@ public class UploadScopeAuthorizationStrategy extends AbstractScopeAuthorization
         return authZAuthorizationService.canEditStudy(claims, studyId);
       }
 
-      // Fallthrough case for if something unexpected happened and none of the above handlers caught
-      // the auth
-      // Deny access to protected resource if we don't see specific Authentication
+      // Fallthrough case for if something unexpected happened and the Authentication object does
+      // not match any of the expected types. Deny access to protected resource.
       return false;
     }
 

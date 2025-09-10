@@ -226,8 +226,8 @@ auth:
     tokenName: apiToken
     clientID: score
     clientSecret: scoresecret
-    # Define a valid auth provider: ego or keycloak
-    provider: pcglauthz
+    # Define a valid auth provider: ego, keycloak, pcglauthz
+    provider: keycloak
     # Keycloak config
     keycloak:
       host: http://localhost
@@ -277,7 +277,7 @@ spring:
       on-profile: dev
 
 s3:
-  secured: false
+  secured: true
   endpoint: http://localhost:8085
   accessKey: minio
   secretKey: minio123

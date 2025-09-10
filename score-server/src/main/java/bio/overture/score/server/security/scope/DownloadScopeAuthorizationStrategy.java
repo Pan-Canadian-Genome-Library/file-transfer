@@ -24,7 +24,6 @@ import bio.overture.score.server.security.Access;
 import bio.overture.score.server.security.authz.AuthZAuthorizationService;
 import bio.overture.score.server.security.authz.AuthZServiceTokenAuthentication;
 import bio.overture.score.server.security.authz.AuthZUserTokenAuthentication;
-import bio.overture.score.server.security.authz.AuthZUserTokenIntrospector;
 import java.util.Set;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -67,7 +66,7 @@ public class DownloadScopeAuthorizationStrategy extends AbstractScopeAuthorizati
 
         if (authentication instanceof AuthZServiceTokenAuthentication) {
           // Verified service token. Services always have read access.
-          return authentication.isAuthenticated();
+          return true;
         }
         if (authentication instanceof AuthZUserTokenAuthentication) {
 
@@ -76,16 +75,13 @@ public class DownloadScopeAuthorizationStrategy extends AbstractScopeAuthorizati
             log.warn("No study found for objectId {}", objectId);
             return false;
           }
-          val claims = AuthZUserTokenIntrospector.extractClaimsFromAuthentication(authentication);
 
-          return claims.isPresent()
-              && authZAuthorizationService.canReadStudy(claims.get(), studyId);
+          val claims = ((AuthZUserTokenAuthentication) authentication).getUserClaims();
+          return authZAuthorizationService.canReadStudy(claims, studyId);
         }
 
-        // Fallthrough case for if something unexpected happened and none of the above handlers
-        // caught
-        // the auth
-        // Deny access to protected resource if we don't see specific Authentication
+        // Fallthrough case for if something unexpected happened and the Authentication object does
+        // not match any of the expected types. Deny access to protected resource.
         return false;
       }
 

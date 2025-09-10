@@ -69,10 +69,8 @@ public class SecurityConfig {
 
   @Autowired private JwtDecoder jwtDecoder;
 
-  // @Autowired private AuthZAuthorizationService authZAuthorizationService;
-  // @Autowired private AuthZUserTokenIntrospector authzUserTokenIntrospector;
   @Autowired private AuthZAuthenticationFilter authZAuthenticationFilter;
-  //
+
   @Autowired private SwaggerConfig swaggerConfig;
 
   @Autowired
