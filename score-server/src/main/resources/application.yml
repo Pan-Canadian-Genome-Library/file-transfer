@@ -23,7 +23,7 @@
 ###############################################################################
 
 server:
-  port: 8087
+  port: 5431
   compression:
     enabled: true
     mime-types: application/json
@@ -160,13 +160,13 @@ s3:
   secured: true
 
   # Endpoint URL for the S3-compatible service
-  endpoint: http://localhost:8085
+  # endpoint: your-s3-endpoint
 
   # Access key for authentication
-  accessKey: minio
+  # accessKey: your-access-key
 
   # Secret key for authentication
-  secretKey: minio123
+  # secretKey: your-secret-key
 
   # Master encryption key ID for server-side encryption
   # masterEncryptionKeyId: your-encryption-key-id
@@ -196,10 +196,6 @@ spring:
 s3:
   secured: true
 
-# Metadata server
-metadata:
-  url: http://localhost:8080
-
 ---
 ###############################################################################
 # Profile - "secure"
@@ -214,9 +210,9 @@ spring:
       resourceserver:
         jwt:
           # EGO public key
-#          public-key-location: ""
+          public-key-location: "https://localhost:8443/oauth/token/public_key"
           # Keycloak JWK
-          jwk-set-uri: http://localhost/realms/myrealm/protocol/openid-connect/certs
+          #jwk-set-uri: http://localhost/realms/myrealm/protocol/openid-connect/certs
 
 # OAuth authentication server
 auth:
@@ -227,7 +223,7 @@ auth:
     clientID: score
     clientSecret: scoresecret
     # Define a valid auth provider: ego, keycloak, pcglauthz
-    provider: keycloak
+    provider: ego
     # Keycloak config
     keycloak:
       host: http://localhost
@@ -277,7 +273,7 @@ spring:
       on-profile: dev
 
 s3:
-  secured: true
+  secured: false
   endpoint: http://localhost:8085
   accessKey: minio
   secretKey: minio123
