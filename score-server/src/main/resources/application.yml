@@ -54,8 +54,8 @@ metadata:
   useLegacyMode: false
 
 bucket:
-  name.object: oicr.icgc
-  name.state: oicr.icgc
+  name.object: pcgl.data
+  name.state: pcgl.state
   size.pool: 0
   size.key: 2
 
@@ -196,10 +196,6 @@ spring:
 s3:
   secured: true
 
-# Metadata server
-metadata:
-  url: https://meta.icgc.org
-
 ---
 ###############################################################################
 # Profile - "secure"
@@ -226,7 +222,7 @@ auth:
     tokenName: apiToken
     clientID: score
     clientSecret: scoresecret
-    # Define a valid auth provider: ego or keycloak
+    # Define a valid auth provider: ego, keycloak, pcglauthz
     provider: ego
     # Keycloak config
     keycloak:
@@ -243,12 +239,30 @@ auth:
         study:
           prefix: PROGRAMDATA-
           suffix: .WRITE
-authz:
-  host:
-  admin:
-    group:
-
 ---
+
+###############################################################################
+# Profile - "pcglauthz"
+# Configuration for secure environment using PCGL AuthZ for Authorization
+#
+# Important:
+# Commented properties must be provided for this profile to function correctly.
+###############################################################################
+
+spring:
+  config:
+    activate:
+      on-profile: pcglauthz
+auth:
+  server:
+    provider: pcglauthz
+#    authz:
+#      host: https://authz.example.com
+#      admin-group: "PCGL:admin-group-name"
+#      service-id: SERVICE-LABEL
+#      service-uuid: 00000000-0000-0000-0000-0000000000000
+---
+  
 ###############################################################################
 # Profile - "dev"
 ###############################################################################
@@ -269,8 +283,8 @@ server:
   port: 8087
 
 bucket:
-  name.object: test.icgc.test
-  name.state: test.icgc.test
+  name.object: pcgl.test
+  name.state: pcgl.test
 
 upload:
   clean.enabled: false

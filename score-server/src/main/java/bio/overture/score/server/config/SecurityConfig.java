@@ -17,10 +17,10 @@
  */
 package bio.overture.score.server.config;
 
-import bio.overture.score.server.auth.AuthzTokenIntrospector;
 import bio.overture.score.server.metadata.MetadataService;
 import bio.overture.score.server.properties.ScopeProperties;
 import bio.overture.score.server.security.ApiKeyIntrospector;
+import bio.overture.score.server.security.authz.AuthZAuthenticationFilter;
 import bio.overture.score.server.security.scope.DownloadScopeAuthorizationStrategy;
 import bio.overture.score.server.security.scope.UploadScopeAuthorizationStrategy;
 import java.util.UUID;
@@ -44,6 +44,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.OpaqueTokenAuthenticationProvider;
 import org.springframework.security.oauth2.server.resource.introspection.OpaqueTokenIntrospector;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
 /**
  * Resource service configuration file.<br>
@@ -68,7 +69,7 @@ public class SecurityConfig {
 
   @Autowired private JwtDecoder jwtDecoder;
 
-  @Autowired private AuthzTokenIntrospector authzTokenIntrospector;
+  @Autowired private AuthZAuthenticationFilter authZAuthenticationFilter;
 
   @Autowired private SwaggerConfig swaggerConfig;
 
@@ -81,25 +82,35 @@ public class SecurityConfig {
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http.csrf().disable();
     http.authorizeHttpRequests(
-            authorize ->
-                authorize
-                    .antMatchers("/actuator/health")
-                    .permitAll()
-                    .antMatchers("/profile")
-                    .permitAll()
-                    .antMatchers("/download/ping")
-                    .permitAll()
-                    .antMatchers(
-                        swaggerConfig.getAlternateSwaggerUrl(),
-                        "/swagger**",
-                        "/swagger-resources/**",
-                        "/v2/api**",
-                        "/webjars/**")
-                    .permitAll()
-                    .anyRequest()
-                    .authenticated())
-        .oauth2ResourceServer(
-            oauth2 -> oauth2.authenticationManagerResolver(tokenAuthenticationManagerResolver()));
+        authorize ->
+            authorize
+                .antMatchers("/actuator/health")
+                .permitAll()
+                .antMatchers("/profile")
+                .permitAll()
+                .antMatchers("/download/ping")
+                .permitAll()
+                .antMatchers(
+                    swaggerConfig.getAlternateSwaggerUrl(),
+                    "/swagger**",
+                    "/swagger-resources/**",
+                    "/v2/api**",
+                    "/webjars/**")
+                .permitAll()
+                .anyRequest()
+                .authenticated());
+
+    if (provider.equals("pcglauthz")) {
+      http.addFilterBefore(authZAuthenticationFilter, BasicAuthenticationFilter.class);
+    } else {
+      // Score built in auth handling for non-authz providers.
+      // This is kept to keep support for upstream code, but will be unused in PCGL.
+      // If this is left in the security chain, then any request without the Authorization token
+      // will throw an error,
+      // and that conflicts with our handling of requests identified by service tokens.
+      http.oauth2ResourceServer(
+          oauth2 -> oauth2.authenticationManagerResolver(tokenAuthenticationManagerResolver()));
+    }
 
     return http.build();
   }
@@ -107,15 +118,6 @@ public class SecurityConfig {
   @Bean
   public AuthenticationManagerResolver<HttpServletRequest> tokenAuthenticationManagerResolver() {
 
-    // PCGL AuthZ Provider:
-    if (provider.equals("pcglauthz")) {
-      return (request) ->
-          new ProviderManager(new OpaqueTokenAuthenticationProvider(authzTokenIntrospector));
-    }
-
-    // Non PCGL Authz Provider:
-    // Auth Managers for JWT and for ApiKeys. JWT uses the default auth provider,
-    // but OpaqueTokens are handled by the custom ApiKeyIntrospector
     AuthenticationManager jwt = new ProviderManager(new JwtAuthenticationProvider(jwtDecoder));
     AuthenticationManager opaqueToken =
         new ProviderManager(

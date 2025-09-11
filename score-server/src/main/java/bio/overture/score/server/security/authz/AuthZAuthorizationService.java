@@ -1,18 +1,23 @@
-package bio.overture.score.server.auth;
+package bio.overture.score.server.security.authz;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
+import bio.overture.score.server.config.PCGLAuthZConfig;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 
 @Service
-@Profile("secure")
 public class AuthZAuthorizationService {
 
-  @Value("${authz.admin.group}")
-  private String ADMIN_GROUP;
+  @Autowired private PCGLAuthZConfig pcglAuthZConfig;
 
-  public boolean isAdmin(AuthZClaims claims) {
-    return claims.getGroups().contains(ADMIN_GROUP);
+  /**
+   * Determine from AuthZUserClaims if a user is an admin.
+   *
+   * @param claims
+   * @return
+   */
+  public boolean isAdmin(AuthZUserClaims claims) {
+    return claims.getGroups().contains(pcglAuthZConfig.getAdminGroup());
   }
 
   /**
@@ -23,7 +28,7 @@ public class AuthZAuthorizationService {
    * @param studyId
    * @return
    */
-  public boolean canEditStudy(AuthZClaims claims, String studyId) {
+  public boolean canEditStudy(AuthZUserClaims claims, String studyId) {
     return isAdmin(claims) || claims.getEditableStudies().contains(studyId);
   }
 
@@ -35,7 +40,7 @@ public class AuthZAuthorizationService {
    * @param studyId
    * @return
    */
-  public boolean canReadStudy(AuthZClaims claims, String studyId) {
+  public boolean canReadStudy(AuthZUserClaims claims, String studyId) {
     return isAdmin(claims) || claims.getReadableStudies().contains(studyId);
   }
 }

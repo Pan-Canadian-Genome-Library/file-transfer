@@ -16,10 +16,11 @@
  */
 package bio.overture.score.server.security.scope;
 
-import bio.overture.score.server.auth.AuthZAuthorizationService;
-import bio.overture.score.server.auth.AuthzTokenIntrospector;
 import bio.overture.score.server.metadata.MetadataService;
 import bio.overture.score.server.repository.auth.KeycloakAuthorizationService;
+import bio.overture.score.server.security.authz.AuthZAuthorizationService;
+import bio.overture.score.server.security.authz.AuthZServiceTokenAuthentication;
+import bio.overture.score.server.security.authz.AuthZUserTokenAuthentication;
 import java.util.Set;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
@@ -46,16 +47,25 @@ public class UploadScopeAuthorizationStrategy extends AbstractScopeAuthorization
 
     // PCGL AuthZ
     if ("pcglauthz".equalsIgnoreCase(this.getProvider())) {
-      String studyId = fetchStudyId(objectId);
-
-      if (studyId == null) {
-        log.warn("No study found for objectId {}", objectId);
-        return false;
+      if (authentication instanceof AuthZServiceTokenAuthentication) {
+        // Verified service token. Services have permission to upload data.
+        return true;
       }
-      val claims = AuthzTokenIntrospector.extractClaimsFromAuthentication(authentication);
-      return claims.isPresent()
-          ? authZAuthorizationService.canEditStudy(claims.get(), studyId)
-          : false;
+      if (authentication instanceof AuthZUserTokenAuthentication) {
+
+        String studyId = fetchStudyId(objectId);
+
+        if (studyId == null) {
+          log.warn("No study found for objectId {}", objectId);
+          return false;
+        }
+        val claims = ((AuthZUserTokenAuthentication) authentication).getUserClaims();
+        return authZAuthorizationService.canEditStudy(claims, studyId);
+      }
+
+      // Fallthrough case for if something unexpected happened and the Authentication object does
+      // not match any of the expected types. Deny access to protected resource.
+      return false;
     }
 
     // Provider is not PCGL AuthZ:

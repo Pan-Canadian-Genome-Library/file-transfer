@@ -1,6 +1,6 @@
-# Score
+# PCGL File-Transfer Service
 
-Score is a file transfer service designed to enable large-file upload and download, providing a robust API for secure file transfer and storage operations. It serves as an intermediary between object storage systems and user authorization mechanisms, using pre-signed URLs for efficient and protected data access.
+The File-Transfer service provides upload and download handling for large genomic file data. This repository provides the source code for the File-Transfer server and command line interface applications.
 
 </br>
 
@@ -9,10 +9,10 @@ Score is a file transfer service designed to enable large-file upload and downlo
 > <img align="left" src="ov-logo.png" height="50"/>
 > </div>
 > 
-> *Score is part of [Overture](https://www.overture.bio/), a collection of open-source software microservices used to create platforms for researchers to organize and share genomics data.*
+> *File-Transfer service is a fork of Score, part of [Overture's](https://www.overture.bio/) collection of open-source software suite. It has been extended to integrate with PCGL's federated Authorization service.*
 > 
 
-## Key Features
+## Score Key Features
 
 - **Multi-cloud Support**: Compatible with AWS S3, Azure Storage, and any object storage with an S3 compliant API (Minio, Ceph, etc.)
 - **High-performance Transfers**: Implements multipart uploads and downloads for optimal throughput
@@ -25,7 +25,7 @@ Score is a file transfer service designed to enable large-file upload and downlo
 - **FUSE Support**: Offers file system in Userspace (FUSE) support for enhanced file operations
 - **Interactive API Documentation:** Built-in Swagger UI for easy API interaction and exploration
 
-## Documentation
+## Additional Score Documentation
 
 Technical resources for those working with or contributing to the project are available from our official documentation site, the following content can also be read and updated within the `/docs` folder of this repository.
 

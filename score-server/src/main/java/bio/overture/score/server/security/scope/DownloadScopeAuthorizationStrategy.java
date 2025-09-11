@@ -17,12 +17,13 @@
  */
 package bio.overture.score.server.security.scope;
 
-import bio.overture.score.server.auth.AuthZAuthorizationService;
-import bio.overture.score.server.auth.AuthzTokenIntrospector;
 import bio.overture.score.server.exception.NotRetryableException;
 import bio.overture.score.server.metadata.MetadataService;
 import bio.overture.score.server.repository.auth.KeycloakAuthorizationService;
 import bio.overture.score.server.security.Access;
+import bio.overture.score.server.security.authz.AuthZAuthorizationService;
+import bio.overture.score.server.security.authz.AuthZServiceTokenAuthentication;
+import bio.overture.score.server.security.authz.AuthZUserTokenAuthentication;
 import java.util.Set;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -63,16 +64,25 @@ public class DownloadScopeAuthorizationStrategy extends AbstractScopeAuthorizati
 
       if ("pcglauthz".equalsIgnoreCase(this.getProvider())) {
 
-        String studyId = fetchStudyId(objectId);
-        if (studyId == null) {
-          log.warn("No study found for objectId {}", objectId);
-          return false;
+        if (authentication instanceof AuthZServiceTokenAuthentication) {
+          // Verified service token. Services always have read access.
+          return true;
         }
-        val claims = AuthzTokenIntrospector.extractClaimsFromAuthentication(authentication);
+        if (authentication instanceof AuthZUserTokenAuthentication) {
 
-        return claims.isPresent()
-            ? authZAuthorizationService.canReadStudy(claims.get(), studyId)
-            : false;
+          String studyId = fetchStudyId(objectId);
+          if (studyId == null) {
+            log.warn("No study found for objectId {}", objectId);
+            return false;
+          }
+
+          val claims = ((AuthZUserTokenAuthentication) authentication).getUserClaims();
+          return authZAuthorizationService.canReadStudy(claims, studyId);
+        }
+
+        // Fallthrough case for if something unexpected happened and the Authentication object does
+        // not match any of the expected types. Deny access to protected resource.
+        return false;
       }
 
       Set<String> grantedScopes = getGrantedScopes(authentication);

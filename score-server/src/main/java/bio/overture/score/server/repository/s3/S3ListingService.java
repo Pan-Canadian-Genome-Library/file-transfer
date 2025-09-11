@@ -72,7 +72,7 @@ public class S3ListingService implements ListingService {
     } catch (AmazonS3Exception ase) {
       if (ase.getStatusCode() == HttpStatus.NOT_FOUND.value()) {
         // ok - just means bucket isn't there
-        log.info("fallback bucket doesn't exist");
+        log.info("Potential service configuration issue: object storage bucket not found.");
       } else {
         throw ase;
       }

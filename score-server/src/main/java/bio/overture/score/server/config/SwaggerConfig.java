@@ -57,6 +57,7 @@ public class SwaggerConfig {
         .host(swaggerHost)
         .pathProvider(
             new RelativePathProvider(null) {
+
               @Override
               public String getApplicationBasePath() {
                 return basePath;
