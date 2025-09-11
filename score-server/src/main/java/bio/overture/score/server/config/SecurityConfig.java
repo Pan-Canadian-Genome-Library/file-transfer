@@ -82,24 +82,23 @@ public class SecurityConfig {
   public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     http.csrf().disable();
     http.authorizeHttpRequests(
-            authorize ->
-                authorize
-                    .antMatchers("/actuator/health")
-                    .permitAll()
-                    .antMatchers("/profile")
-                    .permitAll()
-                    .antMatchers("/download/ping")
-                    .permitAll()
-                    .antMatchers(
-                        swaggerConfig.getAlternateSwaggerUrl(),
-                        "/swagger**",
-                        "/swagger-resources/**",
-                        "/v2/api**",
-                        "/webjars/**")
-                    .permitAll()
-                    .anyRequest()
-                    .authenticated())
-        .addFilterBefore(authZAuthenticationFilter, BasicAuthenticationFilter.class);
+        authorize ->
+            authorize
+                .antMatchers("/actuator/health")
+                .permitAll()
+                .antMatchers("/profile")
+                .permitAll()
+                .antMatchers("/download/ping")
+                .permitAll()
+                .antMatchers(
+                    swaggerConfig.getAlternateSwaggerUrl(),
+                    "/swagger**",
+                    "/swagger-resources/**",
+                    "/v2/api**",
+                    "/webjars/**")
+                .permitAll()
+                .anyRequest()
+                .authenticated());
 
     if (provider.equals("pcglauthz")) {
       http.addFilterBefore(authZAuthenticationFilter, BasicAuthenticationFilter.class);

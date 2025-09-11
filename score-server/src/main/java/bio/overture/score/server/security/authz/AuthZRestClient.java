@@ -8,7 +8,6 @@ import bio.overture.score.server.security.authz.dto.AuthZUserDetailsResponse;
 import java.util.Optional;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
@@ -17,8 +16,8 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
-@Profile("pcglauthz")
 public class AuthZRestClient {
+
   @Autowired private PCGLAuthZConfig pcglAuthZConfig;
 
   private final RestTemplate restTemplate = new RestTemplate();

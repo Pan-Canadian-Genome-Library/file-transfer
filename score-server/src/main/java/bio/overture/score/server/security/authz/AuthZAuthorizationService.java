@@ -2,12 +2,10 @@ package bio.overture.score.server.security.authz;
 
 import bio.overture.score.server.config.PCGLAuthZConfig;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 
 @Service
-@Profile("pcglauthz")
 public class AuthZAuthorizationService {
 
   @Autowired private PCGLAuthZConfig pcglAuthZConfig;

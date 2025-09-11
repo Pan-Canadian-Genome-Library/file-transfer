@@ -11,14 +11,12 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Profile;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Slf4j
 @Component
-@Profile("pcglauthz")
 public class AuthZAuthenticationFilter extends OncePerRequestFilter {
 
   @Autowired private AuthZRestClient authZRestClient;
@@ -34,9 +32,9 @@ public class AuthZAuthenticationFilter extends OncePerRequestFilter {
     String authorizationHeader = request.getHeader("Authorization");
 
     if (serviceToken != null && serviceId != null) {
-        // Service Token Headers both have a value.
-        // Treat this request as coming from another service,
-        // using a Service Verification Token to authorize the request.
+      // Service Token Headers both have a value.
+      // Treat this request as coming from another service,
+      // using a Service Verification Token to authorize the request.
 
       val credentials = new AuthZServiceTokenCredentials(serviceId, serviceToken);
 
@@ -50,8 +48,9 @@ public class AuthZAuthenticationFilter extends OncePerRequestFilter {
         return;
       }
     } else if (authorizationHeader != null) {
-        // Request has an Authorization header.
-        // Treat this request as coming from a user, check for a Bearer token to authorize the request.
+      // Request has an Authorization header.
+      // Treat this request as coming from a user, check for a Bearer token to authorize the
+      // request.
 
       if (!authorizationHeader.startsWith("Bearer ")) {
         resolveUnauthorized(response);
@@ -62,7 +61,6 @@ public class AuthZAuthenticationFilter extends OncePerRequestFilter {
       val userTokenAuthentication = getUserTokenAuthentication(bearerToken);
       if (userTokenAuthentication.isPresent()) {
         SecurityContextHolder.getContext().setAuthentication(userTokenAuthentication.get());
-        filterChain.doFilter(request, response);
       } else {
         resolveUnauthorized(response);
         return;
