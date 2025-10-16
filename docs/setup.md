@@ -156,7 +156,7 @@ docker run -d --name score-client \
  --network="host" \
  --platform="linux/amd64" \
  --mount type=bind,source=${pwd},target=/output \
- ghcr.io/overture-stack/score:latest
+ ghcr.io/overture-stack/score-client:latest
 ```
 
     <details>
