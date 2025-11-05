@@ -149,9 +149,11 @@ public class MetadataService {
     public <T, E extends Throwable> void onError(
         RetryContext context, RetryCallback<T, E> callback, Throwable throwable) {
       log.info("RetryTemplate onError");
+      log.debug("Cause:" + throwable.getCause() + " - Message:" + throwable.getMessage());
       if (throwable instanceof HttpClientErrorException) {
         HttpClientErrorException clientError = (HttpClientErrorException) throwable;
 
+        log.debug("errorCode:" + clientError.getStatusCode() + "Cause:" + clientError.getCause()  + " - Message:" + clientError.getMessage());
         if (clientError.getStatusCode() == HttpStatus.UNAUTHORIZED) {
           // Service Token failed verification by File-Transfer (Storage Service)
           // Clear the token so a new one will be fetched to build the retry request
