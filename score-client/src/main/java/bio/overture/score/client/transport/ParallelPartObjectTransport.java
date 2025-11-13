@@ -33,6 +33,8 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -213,7 +215,11 @@ public class ParallelPartObjectTransport implements Transport {
 
   // TODO: need unit test confirming case where source MD5 is null
   protected boolean isCorrupted(DataChannel channel, Part part, File outputDir) throws IOException {
+    Instant start = Instant.now();
     if ((part.getSourceMd5() != null) && channel.verifyMd5(part.getSourceMd5())) {
+      Instant finish = Instant.now();
+      long timeElapsedMs = Duration.between(start, finish).toMillis();
+      log.debug("[Part #{}] Verification MD5 completed in {} ms", part.getPartNumber(), timeElapsedMs);
       return false;
     }
     log.debug("Part is corrupted: {}", part);

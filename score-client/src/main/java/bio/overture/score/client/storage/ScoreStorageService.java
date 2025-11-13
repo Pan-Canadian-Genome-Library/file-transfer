@@ -39,6 +39,8 @@ import java.io.OutputStream;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import lombok.NonNull;
@@ -161,9 +163,13 @@ public class ScoreStorageService extends AbstractStorageService {
                 response -> response.getHeaders();
 
             try {
+              Instant start = Instant.now();
               HttpHeaders headers =
                   dataTemplate.execute(
                       new URI(part.getUrl()), HttpMethod.PUT, callback, headersExtractor);
+              Instant finish = Instant.now();
+              long timeElapsedMs = Duration.between(start, finish).toMillis();
+              log.debug("[Part #{}] Object Storage upload part completed in {} ms. Response headers: encryption: {}; eTag: {}", part.getPartNumber(), timeElapsedMs, headers.get(Headers.SERVER_SIDE_ENCRYPTION), headers.getETag());
 
               try {
                 finalizeUploadPart(
@@ -212,23 +218,31 @@ public class ScoreStorageService extends AbstractStorageService {
     log.debug("Initiating upload, object-id: {} overwrite: {}", objectId, overwrite);
     return retry.execute(
         ctx ->
-            serviceTemplate
-                .exchange(
-                    endpoint
-                        + "/upload/{object-id}/uploads?fileSize={file-size}&overwrite={overwrite}&md5={checksum}",
-                    POST,
-                    defaultEntity(),
-                    ObjectSpecification.class,
-                    objectId,
-                    length,
-                    overwrite,
-                    md5)
-                .getBody());
+        {
+          Instant start = Instant.now();
+          val response = serviceTemplate
+              .exchange(
+                  endpoint
+                      + "/upload/{object-id}/uploads?fileSize={file-size}&overwrite={overwrite}&md5={checksum}",
+                  POST,
+                  defaultEntity(),
+                  ObjectSpecification.class,
+                  objectId,
+                  length,
+                  overwrite,
+                  md5)
+              .getBody();
+          Instant finish = Instant.now();
+          long timeElapsedMs = Duration.between(start, finish).toMillis();
+          log.debug("Song call to initiate upload object-id: {} completed in {} ms", objectId, timeElapsedMs);
+          return response;
+        });
   }
 
   @Override
   public void finalizeUpload(String objectId, String uploadId) throws IOException {
     log.debug("finalizing upload, object-id: {}, upload-id: {}", objectId, uploadId);
+    Instant start = Instant.now();
     retry.execute(
         ctx -> {
           serviceTemplate.exchange(
@@ -240,7 +254,9 @@ public class ScoreStorageService extends AbstractStorageService {
               uploadId);
           return null;
         });
-    log.debug("finalizing upload returned");
+    Instant finish = Instant.now();
+    long timeElapsedMs = Duration.between(start, finish).toMillis();
+    log.debug("Song call to finalize upload object-id {} completed in {} ms", objectId, timeElapsedMs);
   }
 
   @Override
@@ -260,6 +276,7 @@ public class ScoreStorageService extends AbstractStorageService {
     retry.execute(
         ctx -> {
           if (disableChecksum || md5.equals(etag)) {
+            Instant start = Instant.now();
             serviceTemplate.exchange(
                 endpoint
                     + "/upload/{object-id}/parts?uploadId={upload-id}&partNumber={partNumber}&md5={md5}&etag={etag}",
@@ -271,8 +288,12 @@ public class ScoreStorageService extends AbstractStorageService {
                 partNumber,
                 md5,
                 etag);
+            Instant finish = Instant.now();
+            long timeElapsedMs = Duration.between(start, finish).toMillis();
+            log.debug("[Part #{}] Song call to finalize part upload completed in {} ms", partNumber, timeElapsedMs);
             return null;
           }
+          log.debug("[Part #{}] Skipped Song call to finalize part upload. DisabledChecksum: {}; MD5 mismatch ETAG:{}", partNumber, false, md5.equals(etag));
           throw new NotRetryableException(); // using this as control mechanism?
         });
   }
