@@ -59,10 +59,7 @@ import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RequestCallback;
-import org.springframework.web.client.ResponseExtractor;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.*;
 
 /** Service responsible for interacting with the remote upload service. */
 @Slf4j
@@ -149,6 +146,7 @@ public class ScoreStorageService extends AbstractStorageService {
           @Override
           public Void doWithRetry(RetryContext ctx) throws IOException {
             log.debug("Upload Part URL: {}", part.getUrl());
+            Instant startUploadPart = Instant.now();
 
             final RequestCallback callback =
                 request -> {
@@ -189,13 +187,26 @@ public class ScoreStorageService extends AbstractStorageService {
                 throw new RetryableException(e);
               }
             } catch (NotResumableException | NotRetryableException e) {
+              Instant finish = Instant.now();
+              long timeElapsedMs = Duration.between(startUploadPart, finish).toMillis();
               log.error(
-                  "Could not proceed. Failed to send part for part number: {}",
+                  "Could not proceed. Failed to send part for part number: {} after: {} ms",
                   part.getPartNumber(),
+                  timeElapsedMs,
                   e);
               throw e;
             } catch (Throwable e) {
-              log.warn("Failed to send part for part #{} : {}", part.getPartNumber(), e);
+              Instant finish = Instant.now();
+              long timeElapsedMs = Duration.between(startUploadPart, finish).toMillis();
+              if (e instanceof RestClientResponseException){
+                RestClientResponseException ex = (RestClientResponseException) e;
+                log.warn("Failed to send part for part #{} in {} ms. HTTP Code: {}; Body: {}",
+                    part.getPartNumber(), timeElapsedMs, ex.getRawStatusCode(), ex.getResponseBodyAsString());
+              } else {
+                log.warn("Failed to send part for part #{} failed in: {} ms. {}",
+                    part.getPartNumber(), timeElapsedMs, e);
+              }
+
               channel.reset();
               throw new RetryableException(e);
             }
