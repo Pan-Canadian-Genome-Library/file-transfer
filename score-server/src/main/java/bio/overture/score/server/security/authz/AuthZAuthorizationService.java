@@ -17,7 +17,7 @@ public class AuthZAuthorizationService {
    * @return
    */
   public boolean isAdmin(AuthZUserClaims claims) {
-    return claims.getGroups().contains(pcglAuthZConfig.getAdminGroup());
+    return claims.isDataAdmin();
   }
 
   /**

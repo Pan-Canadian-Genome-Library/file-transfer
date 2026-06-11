@@ -258,7 +258,6 @@ auth:
     provider: pcglauthz
 #    authz:
 #      host: https://authz.example.com
-#      admin-group: "PCGL:admin-group-name"
 #      service-id: SERVICE-LABEL
 #      service-uuid: 00000000-0000-0000-0000-0000000000000
 ---

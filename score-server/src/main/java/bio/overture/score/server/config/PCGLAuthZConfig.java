@@ -14,8 +14,6 @@ public class PCGLAuthZConfig {
 
   @NotNull private String host;
 
-  @NotNull private String adminGroup;
-
   @NotNull private String serviceId;
 
   @NotNull private String serviceUUID;

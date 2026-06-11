@@ -27,9 +27,9 @@ public class AuthZUserDetailsResponse {
       private String type;
     }
 
+    private boolean data_admin;
     private List<UserEmail> emails = new ArrayList<>();
     private String pcgl_id;
-    private boolean site_curator;
     private boolean site_admin;
   }
 
@@ -64,6 +64,7 @@ public class AuthZUserDetailsResponse {
 
     return AuthZUserClaims.builder()
         .sub(this.getUserinfo().getPcgl_id())
+        .dataAdmin(this.getUserinfo().isData_admin())
         .editableStudies(this.getStudy_authorizations().getEditable_studies())
         .readableStudies(this.getStudy_authorizations().getReadable_studies())
         .groups(groupNames)
