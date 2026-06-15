@@ -9,6 +9,7 @@ import lombok.Data;
 public class AuthZUserClaims {
 
   private final String sub;
+  private final boolean dataAdmin;
   private final List<String> editableStudies;
   private final List<String> readableStudies;
   private final List<String> groups;

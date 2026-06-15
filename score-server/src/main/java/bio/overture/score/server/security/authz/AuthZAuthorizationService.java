@@ -1,14 +1,9 @@
 package bio.overture.score.server.security.authz;
 
-import bio.overture.score.server.config.PCGLAuthZConfig;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthZAuthorizationService {
-
-  @Autowired private PCGLAuthZConfig pcglAuthZConfig;
 
   /**
    * Determine from AuthZUserClaims if a user is an admin.
@@ -17,7 +12,7 @@ public class AuthZAuthorizationService {
    * @return
    */
   public boolean isAdmin(AuthZUserClaims claims) {
-    return claims.getGroups().contains(pcglAuthZConfig.getAdminGroup());
+    return claims.isDataAdmin();
   }
 
   /**
